@@ -10,7 +10,9 @@ async function runFixSca(workspaceDir, actionPath, fixScaParams) {
     const projectPath = path.join(workspaceDir, 'source-code', projectRootDir);
 
     // Set up environment for veracode CLI
-    const veracodeBinary =  path.join(`${process.env.CLI_PATH}`, 'veracode'); 
+    const isWindows = process.platform === 'win32';
+    const binaryName = isWindows ? 'veracode.exe' : 'veracode';
+    const veracodeBinary = path.join(`${process.env.CLI_PATH}`, binaryName);
     // Build command arguments
     const args = [
       'fix',
