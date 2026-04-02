@@ -33,6 +33,26 @@ async function runFixSca(workspaceDir, actionPath, fixScaParams) {
       env: { ...process.env }
     });
 
+    // If exists, upload the sca-fix-report.md as an artifact
+    const reportFilename = 'sca-fix-report.md';
+    const artifactFilePath = path.join(workspaceDir, 'source-code', reportFilename);
+    const artifactFilePathDir = path.join(workspaceDir, 'source-code');
+
+    if (fs.existsSync(artifactFilePath)) {
+      core.info('== Start upload ==')
+      const artifactClient = new DefaultArtifactClient();
+      const uploadResponse = await artifactClient.uploadArtifact(
+        reportFilename,
+        [artifactFilePath],
+        artifactFilePathDir,
+        { continueOnError: false }
+      );
+      core.info('== End upload ==')
+      core.info(`Artifact uploaded successfully: ${uploadResponse.artifactName}`);
+    } else {
+      core.info(`${reportFilename} not found. Skipping artifact upload.`);
+    }
+
     // Check for changes in the repository
     let hasChanges = false;
     let gitDiffOutput = '';
