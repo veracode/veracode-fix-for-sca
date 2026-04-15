@@ -42,7 +42,7 @@ async function runFixSca(workspaceDir, actionPath, fixScaParams) {
       core.info('== Start upload ==')
       const artifactClient = new DefaultArtifactClient();
       const uploadResponse = await artifactClient.uploadArtifact(
-        reportFilename,
+        'sca-fix-report',
         [artifactFilePath],
         artifactFilePathDir,
         { continueOnError: false }
