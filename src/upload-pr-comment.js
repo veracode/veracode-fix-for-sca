@@ -56,7 +56,7 @@ async function uploadPrComment(workspaceDir, repository, prNumber, githubToken, 
     );
     core.info('== End upload ==')
 
-    core.info(`Artifact uploaded successfully: ${uploadResponse.artifactName}`);
+    core.info(`Artifact uploaded successfully: ${uploadResponse?.artifactName || artifactName}`);
   } catch (artifactError) {
     core.warning(`Failed to upload artifact: ${artifactError.message}`);
     // Don't fail the action if uploading fails
