@@ -18,11 +18,22 @@ async function runFixSca(workspaceDir, actionPath, fixScaParams) {
       'fix',
       'sca',
       projectPath,
-      '--results', path.join(workspaceDir, 'veracode_artifact_directory/Veracode Agent Based SCA Results', 'scaResults.json'),
-      '--transitive',
-      '--async', 
-      '--decouple', 'true'
+      '--results',
+      path.join(
+        workspaceDir,
+        'veracode_artifact_directory/Veracode Agent Based SCA Results',
+        'scaResults.json'
+      ),
+      '--async',
+      '--decouple',
+      'true',
     ];
+
+    // Conditionally add --transitive flag (default: true)
+    const fixTransitive = core.getInput('fix-transitive');
+    if (fixTransitive?.toLowerCase() !== 'false') {
+      args.push('--transitive');
+    }
 
     if (fixScaParams && fixScaParams.trim() && fixScaParams !== 'SCA-*') {
       core.info(`Fix SCA params: ${fixScaParams}`);
