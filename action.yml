@@ -25,6 +25,10 @@ inputs:
   fix-sca-params:
     description: "Additional parameters for Fix SCA command"
     required: false
+  fix-transitive:
+    description: "Fix transitive dependencies (default: true)"
+    required: false
+    default: 'true'
 
 # outputs:
 #   run-next-step:
