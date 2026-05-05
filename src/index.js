@@ -1,5 +1,6 @@
 const core = require('@actions/core');
-
+const fs = require('fs');
+const path = require('path');
 const setupAstGrep = require('./setup-ast-grep');
 const runFixSca = require('./run-fix-sca');
 const createPr = require('./create-pr');
@@ -16,6 +17,7 @@ async function main() {
     const fixScaParams = core.getInput('fix-sca-params');
 
     const workspaceDir = process.env.GITHUB_WORKSPACE;
+    const statusFilePath = path.join(workspaceDir, 'source-code', 'sca-fix-status');
     const actionPath = `${__dirname}/..`
 
     core.info('Starting Veracode Fix for SCA action...');
@@ -30,6 +32,7 @@ async function main() {
     
     if (!fixScaOutput.hasChanges) {
       core.info('No changes detected. Skipping PR creation.');
+      fs.writeFileSync(statusFilePath, 'NO_CHANGES_DETECTED', null, 2);
       return;
     }
 

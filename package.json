@@ -5,6 +5,7 @@
   "main": "src/index.js",
   "scripts": {
     "build": "ncc build src/index.js -o dist",
+    "build-post": "ncc build src/post-action.js -o dist/post",
     "prepare": "npm run build"
   },
   "keywords": [
