@@ -27,7 +27,7 @@ async function runFixSca(workspaceDir, actionPath, fixScaParams) {
       ),
       '--async',
       '--decouple',
-      '-- remote',
+      '--remote',
       'true',
     ];
 
