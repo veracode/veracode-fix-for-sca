@@ -27,7 +27,6 @@ async function runFixSca(workspaceDir, actionPath, fixScaParams) {
       ),
       '--async',
       '--decouple',
-      '--remote',
       'true',
     ];
 
@@ -35,6 +34,12 @@ async function runFixSca(workspaceDir, actionPath, fixScaParams) {
     const fixTransitive = core.getInput('fix-transitive');
     if (fixTransitive?.toLowerCase() !== 'false') {
       args.push('--transitive');
+    }
+
+    // Conditionally add --remote flag (default: true)
+    const fixRemote = core.getInput('fix-remote');
+    if (fixRemote?.toLowerCase() == 'true') {
+      args.push('--remote');
     }
 
     if (fixScaParams && fixScaParams.trim() && fixScaParams !== 'SCA-*') {

@@ -29,6 +29,10 @@ inputs:
     description: "Fix transitive dependencies (default: true)"
     required: false
     default: 'true'
+  fix-remote:
+    description: "Patch Agent Workflow flag (default: false)"
+    required: false
+    default: 'true'
 
 # outputs:
 #   run-next-step:
