@@ -88674,8 +88674,9 @@ async function runFixSca(workspaceDir, actionPath, fixScaParams) {
     }
 
     // Conditionally add --remote flag (default: true)
-    const fixRemote = core.getInput('fix-transitive');
+    const fixRemote = core.getInput('fix-remote');
     if (fixRemote?.toLowerCase() === 'true') {
+      print(`remote argument appended`)
       args.push('--remote');
     }
 
