@@ -30,6 +30,8 @@ async function runFixSca(workspaceDir, actionPath, fixScaParams) {
       'true',
     ];
 
+    core.info(`MAX_CONCURRENT: ${process.env.MAX_CONCURRENT}`);
+
     // Conditionally add --transitive flag (default: true)
     const fixTransitive = core.getInput('fix-transitive');
     if (fixTransitive?.toLowerCase() !== 'false') {
@@ -41,6 +43,7 @@ async function runFixSca(workspaceDir, actionPath, fixScaParams) {
     if (fixRemote?.toLowerCase() === 'true') {
       core.info(`remote argument appended`)
       args.push('--remote');
+      args.push('-v');
     }
 
     if (fixScaParams && fixScaParams.trim() && fixScaParams !== 'SCA-*') {
