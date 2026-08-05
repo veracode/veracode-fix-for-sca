@@ -32,7 +32,7 @@ inputs:
   fix-remote:
     description: "Fix remote flag (default: true)"
     required: false
-    default: 'true'
+    default: 'false'
 
 # outputs:
 #   run-next-step:
