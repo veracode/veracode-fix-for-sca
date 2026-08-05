@@ -30,7 +30,7 @@ inputs:
     required: false
     default: 'true'
   fix-remote:
-    description: "Fix remote flag (default: true)"
+    description: "Fix remote flag (default: false)"
     required: false
     default: 'false'
 
