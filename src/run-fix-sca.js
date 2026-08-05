@@ -36,7 +36,7 @@ async function runFixSca(workspaceDir, actionPath, fixScaParams) {
       args.push('--transitive');
     }
 
-    // Conditionally add --remote flag (default: true)
+    // Conditionally add --remote flag (default: false)
     const fixRemote = core.getInput('fix-remote');
     if (fixRemote?.toLowerCase() === 'true') {
       core.info(`remote argument appended`)
