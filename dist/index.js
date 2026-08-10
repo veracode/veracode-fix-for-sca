@@ -88664,7 +88664,7 @@ async function runFixSca(workspaceDir, actionPath, fixScaParams) {
       ),
       '--async',
       '--decouple',
-      'true'
+      'true',
     ];
 
     // Conditionally add --transitive flag (default: true)
@@ -88674,8 +88674,8 @@ async function runFixSca(workspaceDir, actionPath, fixScaParams) {
     }
 
     // Conditionally add --remote flag (default: true)
-    const remote = core.getInput('fix-remote');
-    if (fixTransitive?.toLowerCase() == 'true') {
+    const fixRemote = core.getInput('fix-remote');
+    if (fixRemote?.toLowerCase() === 'true') {
       args.push('--remote');
     }
 
