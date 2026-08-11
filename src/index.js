@@ -3,18 +3,15 @@ const fs = require('fs');
 const path = require('path');
 const setupAstGrep = require('./setup-ast-grep');
 const runFixSca = require('./run-fix-sca');
-const createPr = require('./create-pr');
-const uploadPrComment = require('./upload-pr-comment');
 
 async function main() {
   try {
     // Get inputs
-    const githubToken = core.getInput('github-token');
     const repository = core.getInput('repository');
     const branch = core.getInput('branch');
-    const githubApiUrl = core.getInput('github-api-url');
     const prNumber = core.getInput('pr-number');
     const fixScaParams = core.getInput('fix-sca-params');
+    const fixTransitive = core.getInput('fix-transitive');
 
     const workspaceDir = process.env.GITHUB_WORKSPACE;
     const statusFilePath = path.join(workspaceDir, 'source-code', 'sca-fix-status');
@@ -22,40 +19,53 @@ async function main() {
 
     core.info('Starting Veracode Fix for SCA action...');
 
+    // Log all inputs from action.yml
+    core.info('=== ACTION INPUTS (from action.yml) ===');
+    core.info(`repository: ${repository}`);
+    core.info(`branch: ${branch}`);
+    core.info(`pr-number: ${prNumber}`);
+    core.info(`fix-sca-params: ${fixScaParams || 'NOT SET'}`);
+    core.info(`fix-transitive: ${fixTransitive}`);
+    core.info('=====================================');
+
+    core.info(`GITHUB_WORKSPACE: ${workspaceDir}`);
+    core.info(`CLI_PATH: ${process.env.CLI_PATH}`);
+
     // Setup ast-grep
     core.info('Setting up ast-grep...');
-    await setupAstGrep(actionPath);
+    try {
+      await setupAstGrep(actionPath);
+      core.info('ast-grep setup completed successfully');
+    } catch (astGrepError) {
+      core.error(`ast-grep setup failed: ${astGrepError.message}`);
+      throw astGrepError;
+    }
 
     // Run Fix for SCA
     core.info('Running Fix for SCA...');
-    const fixScaOutput = await runFixSca(workspaceDir, actionPath, fixScaParams);
-    
-    if (!fixScaOutput.hasChanges) {
-      core.info('No changes detected. Skipping PR creation.');
-      fs.writeFileSync(statusFilePath, 'NO_CHANGES_DETECTED', null, 2);
-      return;
+    let fixScaOutput;
+    try {
+      const githubContext = {
+        repository: {
+          full_name: repository,
+          owner: repository.split('/')[0],
+          name: repository.split('/')[1],
+          branch: branch,
+        },
+        issue_number: prNumber ? parseInt(prNumber) : null,
+        run_id: process.env.GITHUB_RUN_ID,
+      };
+      fixScaOutput = await runFixSca(workspaceDir, actionPath, fixScaParams, githubContext);
+      core.info('Fix for SCA completed');
+    } catch (fixScaError) {
+      core.error(`Fix for SCA failed: ${fixScaError.message}`);
+      core.setOutput('run-next-step', 'false');
+      throw fixScaError;
     }
 
-    // Create Pull Request
-    core.info('Creating pull request...');
-    const prCreateOutput = await createPr(
-      workspaceDir,
-      repository,
-      branch,
-      githubToken,
-      githubApiUrl
-    );
-
-    // Post PR comment on original PR
-    core.info('Posting comment on original PR...');
-    await uploadPrComment(
-      workspaceDir,
-      repository,
-      prNumber,
-      githubToken,
-      githubApiUrl
-    );
-
+    // In async mode, we exit here and let the backend trigger follow-up workflow
+    core.info('✓ Fix for SCA job submitted to backend (async mode)');
+    core.info('Workflow exiting - PR creation will be handled by follow-up workflow triggered by backend');
     core.info('Veracode Fix for SCA action completed successfully.');
   } catch (error) {
     core.setFailed(error.message);
