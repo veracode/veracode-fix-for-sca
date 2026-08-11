@@ -31734,6 +31734,8 @@ async function main() {
     core.info('Running Fix for SCA...');
     let fixScaOutput;
     try {
+      // GitHub context is always passed — both /auto-fix and /fix-sessions support fire-and-forget
+      // Backend detects fire-and-forget based on presence of github_context
       const githubContext = {
         repository: {
           full_name: repository,
@@ -31752,9 +31754,9 @@ async function main() {
       throw fixScaError;
     }
 
-    // In async mode, we exit here and let the backend trigger follow-up workflow
-    core.info('✓ Fix for SCA job submitted to backend (async mode)');
-    core.info('Workflow exiting - PR creation will be handled by follow-up workflow triggered by backend');
+    // In fire-and-forget mode (GitHub context present), backend handles PR creation
+    core.info('✓ Fix for SCA job submitted to backend');
+    core.info('Workflow exiting - PR creation will be handled by follow-up workflow triggered by backend if applicable');
     core.info('Veracode Fix for SCA action completed successfully.');
   } catch (error) {
     core.setFailed(error.message);
