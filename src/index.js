@@ -12,6 +12,7 @@ async function main() {
     const prNumber = core.getInput('pr-number');
     const fixScaParams = core.getInput('fix-sca-params');
     const fixTransitive = core.getInput('fix-transitive');
+    const fixRemote = core.getInput('fix-remote');
 
     const workspaceDir = process.env.GITHUB_WORKSPACE;
     const statusFilePath = path.join(workspaceDir, 'source-code', 'sca-fix-status');
@@ -26,6 +27,7 @@ async function main() {
     core.info(`pr-number: ${prNumber}`);
     core.info(`fix-sca-params: ${fixScaParams || 'NOT SET'}`);
     core.info(`fix-transitive: ${fixTransitive}`);
+    core.info(`fix-remote: ${fixRemote}`);
     core.info('=====================================');
 
     core.info(`GITHUB_WORKSPACE: ${workspaceDir}`);

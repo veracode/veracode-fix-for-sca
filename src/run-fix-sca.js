@@ -161,7 +161,15 @@ async function runFixSca(workspaceDir, actionPath, fixScaParams, githubContext) 
       core.info(`Last output: ${outputTail}`);
     }
 
-    // Check for changes in the repository
+    // Fire-and-forget mode: if GitHub context present, skip local PR creation
+    // Backend will handle PR creation via triggered workflow
+    if (githubContext && githubContext.repository) {
+      core.info('✓ Fire-and-forget mode detected: backend will handle PR creation');
+      core.setOutput('run-next-step', 'false');
+      return { hasChanges: false, fireAndForget: true };
+    }
+
+    // Check for changes in the repository (polling mode only)
     let hasChanges = false;
     let gitDiffOutput = '';
 
