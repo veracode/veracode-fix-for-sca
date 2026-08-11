@@ -99,6 +99,13 @@ async function runFixSca(workspaceDir, actionPath, fixScaParams, githubContext) 
       args.push('--transitive');
     }
 
+    // Conditionally add --remote flag (default: false)
+    const fixRemote = core.getInput('fix-remote');
+    if (fixRemote?.toLowerCase() === 'true') {
+      core.info(`remote argument appended`)
+      args.push('--remote');
+    }
+
     if (fixScaParams && fixScaParams.trim() && fixScaParams !== 'SCA-*') {
       core.info(`Fix SCA params: ${fixScaParams}`);
       args.push('-i', fixScaParams);
