@@ -60,17 +60,12 @@ async function main() {
         run_id: process.env.GITHUB_RUN_ID,
       };
       fixScaOutput = await runFixSca(workspaceDir, actionPath, fixScaParams, githubContext);
-      core.info('Fix for SCA completed');
+      // Messages are logged by the sca-fix library (especially important in fire-and-forget mode)
     } catch (fixScaError) {
       core.error(`Fix for SCA failed: ${fixScaError.message}`);
       core.setOutput('run-next-step', 'false');
       throw fixScaError;
     }
-
-    // In fire-and-forget mode (GitHub context present), backend handles PR creation
-    core.info('✓ Fix for SCA job submitted to backend');
-    core.info('Workflow exiting - PR creation will be handled by follow-up workflow triggered by backend if applicable');
-    core.info('Veracode Fix for SCA action completed successfully.');
   } catch (error) {
     core.setFailed(error.message);
     process.exit(1);
