@@ -137,11 +137,13 @@ async function runFixSca(workspaceDir, actionPath, fixScaParams, githubContext) 
       listeners: {
         stdout: (data) => {
           cliOutput += data.toString();
-          core.info(data.toString());
+          // CLI output goes directly to GitHub Actions console
+          // Don't re-log via core.info to avoid duplication
         },
         stderr: (data) => {
           cliOutput += data.toString();
-          core.warning(data.toString());
+          // CLI errors go directly to GitHub Actions console
+          // Don't re-log via core.warning to avoid duplication
         }
       }
     });
