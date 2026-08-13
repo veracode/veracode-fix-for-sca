@@ -32,6 +32,9 @@ outputs:
   fix-job-id:
     description: "Veracode Fix for SCA job ID (async mode)"
     value: ${{ steps.run-fix-sca.outputs.fix-job-id }}
+  conversation-id:
+    description: "Veracode CLI conversation ID for request tracing"
+    value: ${{ steps.run-fix-sca.outputs.conversation-id }}
 
 runs:
   using: "node24"
