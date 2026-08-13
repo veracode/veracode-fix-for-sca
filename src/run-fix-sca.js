@@ -146,12 +146,15 @@ async function runFixSca(workspaceDir, actionPath, fixScaParams, githubContext) 
       }
     });
 
-    // Parse job_id from CLI output (async mode returns "Job ID: <uuid>")
-    const jobIdPattern = /Job\s+ID:\s+([a-f0-9\-]+)/i;
-    const match = cliOutput.match(jobIdPattern);
+    // Parse job IDs from CLI output (structured logging from async/remote mode)
+    // Patterns: "jobID":"<uuid>" or "jobIDs":["<uuid>", ...]
+    const uuidPattern = /[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/g;
+    const jobIdMatches = cliOutput.match(uuidPattern);
 
-    if (match && match[1]) {
-      jobId = match[1];
+    if (jobIdMatches && jobIdMatches.length > 0) {
+      // Deduplicate and take first job ID
+      const uniqueJobIds = [...new Set(jobIdMatches)];
+      jobId = uniqueJobIds[0];
       core.info(`✓ Captured Fix SCA Job ID: ${jobId}`);
       core.setOutput('fix-job-id', jobId);
     } else {
