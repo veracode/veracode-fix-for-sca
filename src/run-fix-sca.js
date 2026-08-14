@@ -45,7 +45,7 @@ async function runFixSca(workspaceDir, actionPath, fixScaParams) {
     core.info(`Running: ${veracodeBinary} ${args.join(' ')}`);
     await exec.exec(veracodeBinary, args, {
       env: { ...process.env },
-      cwd: workspaceDir
+      cwd: projectPath
     });
 
     // Check for changes in the repository

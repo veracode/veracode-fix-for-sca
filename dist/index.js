@@ -88574,7 +88574,7 @@ async function createPr(workspaceDir, repository, sourceBranch, githubToken, git
     const prTitle = `[Veracode Fix for SCA] ${branchName}`;
      // Check for sca-fix-report.md and use it for PR description
     let prBody = '';
-    const reportPath = path.join(workspaceDir, 'sca-fix-report.md');
+    const reportPath = path.join(sourceCodeDir, 'sca-fix-report.md');
     if (fs.existsSync(reportPath)) {
       try {
         prBody = fs.readFileSync(reportPath, 'utf8');
@@ -88682,7 +88682,7 @@ async function runFixSca(workspaceDir, actionPath, fixScaParams) {
     core.info(`Running: ${veracodeBinary} ${args.join(' ')}`);
     await exec.exec(veracodeBinary, args, {
       env: { ...process.env },
-      cwd: workspaceDir
+      cwd: projectPath
     });
 
     // Check for changes in the repository

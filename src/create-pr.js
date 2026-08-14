@@ -71,7 +71,7 @@ async function createPr(workspaceDir, repository, sourceBranch, githubToken, git
     const prTitle = `[Veracode Fix for SCA] ${branchName}`;
      // Check for sca-fix-report.md and use it for PR description
     let prBody = '';
-    const reportPath = path.join(workspaceDir, 'sca-fix-report.md');
+    const reportPath = path.join(sourceCodeDir, 'sca-fix-report.md');
     if (fs.existsSync(reportPath)) {
       try {
         prBody = fs.readFileSync(reportPath, 'utf8');
