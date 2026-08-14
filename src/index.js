@@ -19,6 +19,7 @@ async function main() {
     const workspaceDir = process.env.GITHUB_WORKSPACE;
     const statusFilePath = path.join(workspaceDir, 'source-code', 'sca-fix-status');
     const actionPath = `${__dirname}/..`
+    const sourceCodeDir = path.join(workspaceDir, 'source-code');
 
     core.info('Starting Veracode Fix for SCA action...');
 
@@ -28,7 +29,7 @@ async function main() {
 
     // Run Fix for SCA
     core.info('Running Fix for SCA...');
-    const fixScaOutput = await runFixSca(workspaceDir, actionPath, fixScaParams);
+    const fixScaOutput = await runFixSca(workspaceDir, actionPath, fixScaParams, sourceCodeDir);
     
     if (!fixScaOutput.hasChanges) {
       core.info('No changes detected. Skipping PR creation.');
@@ -43,7 +44,8 @@ async function main() {
       repository,
       branch,
       githubToken,
-      githubApiUrl
+      githubApiUrl,
+      sourceCodeDir
     );
 
     // Post PR comment on original PR
