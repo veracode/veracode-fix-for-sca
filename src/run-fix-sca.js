@@ -214,10 +214,9 @@ async function runFixSca(workspaceDir, actionPath, fixScaParams, githubContext) 
 
     // In fire-and-forget mode (GitHub Actions), job ID is not returned by CLI
     if (githubContext && githubContext.repository) {
-      core.info('[FIRE_AND_FORGET] Job submission successful');
       if (conversationId) {
-        core.info(
-          `[FIRE_AND_FORGET] Conversation ID: ${conversationId} (use for debugging)`
+        core.debug(
+          `Conversation ID: ${conversationId} (use for debugging)`
         );
         core.setOutput('conversation-id', conversationId);
       }
@@ -244,7 +243,6 @@ async function runFixSca(workspaceDir, actionPath, fixScaParams, githubContext) 
 
     // Fire-and-forget mode: no local changes to check, backend handles PR creation
     if (githubContext && githubContext.repository) {
-      core.info('Fire-and-forget mode: backend will handle PR creation via callback');
       core.setOutput('run-next-step', 'false');
       return { hasChanges: false, fireAndForget: true };
     }
