@@ -1,0 +1,10 @@
+<component name="libraryTable">
+  <library name="0.41.0">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/ast-grep/0.41.0/app-x86_64-pc-windows-msvc.zip!/" />
+      <root url="jar://$PROJECT_DIR$/ast-grep/0.41.0/app-x86_64-unknown-linux-gnu.zip!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

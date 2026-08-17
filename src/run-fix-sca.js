@@ -116,6 +116,7 @@ async function runFixSca(workspaceDir, actionPath, fixScaParams, githubContext) 
 
     let cliOutput = '';
     let jobId = null;
+    let cliExitCode = 0;
 
     // Pass GitHub context via environment variables (safe metadata only, no tokens)
     const env = { ...process.env };
@@ -132,36 +133,96 @@ async function runFixSca(workspaceDir, actionPath, fixScaParams, githubContext) 
       }
     }
 
-    await exec.exec(veracodeBinary, args, {
-      env: env,
-      listeners: {
-        stdout: (data) => {
-          cliOutput += data.toString();
-          // CLI output goes directly to GitHub Actions console
-          // Don't re-log via core.info to avoid duplication
+    try {
+      cliExitCode = await exec.exec(veracodeBinary, args, {
+        env: env,
+        listeners: {
+          stdout: (data) => {
+            cliOutput += data.toString();
+            // CLI output goes directly to GitHub Actions console
+            // Don't re-log via core.info to avoid duplication
+          },
+          stderr: (data) => {
+            cliOutput += data.toString();
+            // CLI errors go directly to GitHub Actions console
+            // Don't re-log via core.warning to avoid duplication
+          }
         },
-        stderr: (data) => {
-          cliOutput += data.toString();
-          // CLI errors go directly to GitHub Actions console
-          // Don't re-log via core.warning to avoid duplication
-        }
+        ignoreReturnCode: true,
+      });
+    } catch (error) {
+      core.error(`[CLI_ERROR] Failed to execute veracode CLI: ${error.message}`);
+      throw error;
+    }
+
+    // Check for CLI errors - if exit code is non-zero, submission likely failed
+    if (cliExitCode !== 0) {
+      // Extract error details from CLI output
+      const errorLines = cliOutput
+        .split('\n')
+        .filter((line) => line.includes('ERR') || line.includes('Error'))
+        .slice(-5)
+        .join('\n');
+
+      core.error(
+        `[CLI_SUBMISSION_FAILED] CLI exited with code ${cliExitCode}`
+      );
+      core.error(`[CLI_SUBMISSION_FAILED] Recent errors:\n${errorLines}`);
+
+      // Check for specific HTTP error codes in output
+      const has500Error = cliOutput.includes('500 Internal Server Error');
+      const has400Error = cliOutput.includes('400') || cliOutput.includes('Bad Request');
+      const has401Error = cliOutput.includes('401') || cliOutput.includes('Unauthorized');
+      const has403Error = cliOutput.includes('403') || cliOutput.includes('Forbidden');
+
+      if (has500Error) {
+        core.error(
+          '[BACKEND_ERROR] Backend service returned 500 Internal Server Error'
+        );
+      } else if (has400Error) {
+        core.error('[BACKEND_ERROR] Backend service returned 400 Bad Request');
+      } else if (has401Error) {
+        core.error('[BACKEND_ERROR] Backend service returned 401 Unauthorized');
+      } else if (has403Error) {
+        core.error('[BACKEND_ERROR] Backend service returned 403 Forbidden');
       }
-    });
+
+      // In fire-and-forget mode, still fail if submission didn't succeed
+      if (githubContext && githubContext.repository) {
+        core.error(
+          '[FIRE_AND_FORGET_FAILURE] Job submission failed. Backend was not reached.'
+        );
+        core.setOutput('run-next-step', 'false');
+        throw new Error(
+          `Fix SCA job submission failed with exit code ${cliExitCode}`
+        );
+      }
+
+      // For polling mode, also fail
+      core.setOutput('run-next-step', 'false');
+      throw new Error(
+        `Fix SCA job submission failed with exit code ${cliExitCode}`
+      );
+    }
 
     // Parse job IDs and conversation IDs from CLI output
+    // Extract conversation ID for tracking (works for both fire-and-forget and polling)
+    const uuidPattern = /[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/g;
+    const allUuids = cliOutput.match(uuidPattern) || [];
+    const conversationIdMatch = cliOutput.match(/X-Conversation-Id=\["([a-f0-9\-]+)"\]/);
+    const conversationId = conversationIdMatch ? conversationIdMatch[1] : null;
+
     // In fire-and-forget mode (GitHub Actions), job ID is not returned by CLI
     if (githubContext && githubContext.repository) {
-      core.debug('Fire-and-forget mode detected: job ID will be handled by backend');
+      core.info('[FIRE_AND_FORGET] Job submission successful');
+      if (conversationId) {
+        core.info(
+          `[FIRE_AND_FORGET] Conversation ID: ${conversationId} (use for debugging)`
+        );
+        core.setOutput('conversation-id', conversationId);
+      }
     } else {
       // Job IDs: "jobID":"<uuid>" or "jobIDs":["<uuid>", ...]
-      // Conversation IDs: X-Conversation-Id=["<uuid>"] from HTTP headers
-      const uuidPattern = /[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/g;
-      const allUuids = cliOutput.match(uuidPattern) || [];
-
-      // Extract X-Conversation-Id (appears in HTTP response headers)
-      const conversationIdMatch = cliOutput.match(/X-Conversation-Id=\["([a-f0-9\-]+)"\]/);
-      const conversationId = conversationIdMatch ? conversationIdMatch[1] : null;
-
       if (allUuids.length > 0) {
         // Deduplicate UUIDs and take first as job ID
         const uniqueUuids = [...new Set(allUuids)];

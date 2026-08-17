@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="ast-grep-0.40.5">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/ast-grep/ast-grep-0.40.5.zip!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>
