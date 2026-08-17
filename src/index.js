@@ -5,10 +5,9 @@ const setupAstGrep = require('./setup-ast-grep');
 const runFixSca = require('./run-fix-sca');
 
 async function main() {
-  try {
-    // Record action startup time
-    const actionStartTime = Date.now();
+  const actionStartTime = Date.now();
 
+  try {
     // Get inputs
     const repository = core.getInput('repository');
     const branch = core.getInput('branch');
@@ -68,8 +67,10 @@ async function main() {
       core.setOutput('run-next-step', 'false');
       throw fixScaError;
     }
-
-    // Calculate action execution time
+  } catch (error) {
+    core.setFailed(error.message);
+  } finally {
+    // Always log runner release, even if there were errors
     const actionEndTime = Date.now();
     const executionTimeMs = actionEndTime - actionStartTime;
     const executionTimeSec = (executionTimeMs / 1000).toFixed(2);
@@ -81,9 +82,6 @@ async function main() {
     core.info(`    ⚡ Runner released IMMEDIATELY after job submission`);
     core.info(`    ⚡ Backend processes job asynchronously while runner is freed`);
     core.info('════════════════════════════════════════════════════════════════');
-  } catch (error) {
-    core.setFailed(error.message);
-    process.exit(1);
   }
 }
 
