@@ -18,7 +18,6 @@ async function main() {
     const fixRemote = core.getInput('fix-remote');
 
     const workspaceDir = process.env.GITHUB_WORKSPACE;
-    const statusFilePath = path.join(workspaceDir, 'source-code', 'sca-fix-status');
     const actionPath = `${__dirname}/..`
 
     core.info('Starting Veracode Fix for SCA action...');
