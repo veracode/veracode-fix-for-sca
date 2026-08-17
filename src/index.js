@@ -6,6 +6,9 @@ const runFixSca = require('./run-fix-sca');
 
 async function main() {
   try {
+    // Record action startup time
+    const actionStartTime = Date.now();
+
     // Get inputs
     const repository = core.getInput('repository');
     const branch = core.getInput('branch');
@@ -66,6 +69,19 @@ async function main() {
       core.setOutput('run-next-step', 'false');
       throw fixScaError;
     }
+
+    // Calculate action execution time
+    const actionEndTime = Date.now();
+    const executionTimeMs = actionEndTime - actionStartTime;
+    const executionTimeSec = (executionTimeMs / 1000).toFixed(2);
+
+    core.info('════════════════════════════════════════════════════════════════');
+    core.info('🔴 GITHUB RUNNER RELEASED - Action exiting');
+    core.info(`    Action completed at: ${new Date(actionEndTime).toISOString()}`);
+    core.info(`    Total action execution time: ${executionTimeSec}s`);
+    core.info(`    ⚡ Runner released IMMEDIATELY after job submission`);
+    core.info(`    ⚡ Backend processes job asynchronously while runner is freed`);
+    core.info('════════════════════════════════════════════════════════════════');
   } catch (error) {
     core.setFailed(error.message);
     process.exit(1);
