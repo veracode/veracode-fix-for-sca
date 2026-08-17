@@ -149,37 +149,41 @@ async function runFixSca(workspaceDir, actionPath, fixScaParams, githubContext) 
     });
 
     // Parse job IDs and conversation IDs from CLI output
-    // Job IDs: "jobID":"<uuid>" or "jobIDs":["<uuid>", ...]
-    // Conversation IDs: X-Conversation-Id=["<uuid>"] from HTTP headers
-    const uuidPattern = /[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/g;
-    const allUuids = cliOutput.match(uuidPattern) || [];
-
-    // Extract X-Conversation-Id (appears in HTTP response headers)
-    const conversationIdMatch = cliOutput.match(/X-Conversation-Id=\["([a-f0-9\-]+)"\]/);
-    const conversationId = conversationIdMatch ? conversationIdMatch[1] : null;
-
-    if (allUuids.length > 0) {
-      // Deduplicate UUIDs and take first as job ID
-      const uniqueUuids = [...new Set(allUuids)];
-      jobId = uniqueUuids[0];
-      core.info(`✓ Captured Fix SCA Job ID: ${jobId}`);
-      core.setOutput('fix-job-id', jobId);
-    } else {
-      core.warning('Could not parse job ID from CLI output');
-      // Log last 500 chars of output for debugging
-      const outputTail = cliOutput.slice(-500);
-      core.info(`Last output: ${outputTail}`);
-    }
-
-    if (conversationId) {
-      core.info(`Conversation ID: ${conversationId}`);
-      core.setOutput('conversation-id', conversationId);
-    }
-
-    // Fire-and-forget mode: if GitHub context present, skip local PR creation
-    // Backend will handle PR creation via triggered workflow
+    // In fire-and-forget mode (GitHub Actions), job ID is not returned by CLI
     if (githubContext && githubContext.repository) {
-      core.info('✓ Fire-and-forget mode detected: backend will handle PR creation');
+      core.debug('Fire-and-forget mode detected: job ID will be handled by backend');
+    } else {
+      // Job IDs: "jobID":"<uuid>" or "jobIDs":["<uuid>", ...]
+      // Conversation IDs: X-Conversation-Id=["<uuid>"] from HTTP headers
+      const uuidPattern = /[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/g;
+      const allUuids = cliOutput.match(uuidPattern) || [];
+
+      // Extract X-Conversation-Id (appears in HTTP response headers)
+      const conversationIdMatch = cliOutput.match(/X-Conversation-Id=\["([a-f0-9\-]+)"\]/);
+      const conversationId = conversationIdMatch ? conversationIdMatch[1] : null;
+
+      if (allUuids.length > 0) {
+        // Deduplicate UUIDs and take first as job ID
+        const uniqueUuids = [...new Set(allUuids)];
+        jobId = uniqueUuids[0];
+        core.info(`✓ Captured Fix SCA Job ID: ${jobId}`);
+        core.setOutput('fix-job-id', jobId);
+      } else {
+        core.warning('Could not parse job ID from CLI output');
+        // Log last 500 chars of output for debugging
+        const outputTail = cliOutput.slice(-500);
+        core.info(`Last output: ${outputTail}`);
+      }
+
+      if (conversationId) {
+        core.info(`Conversation ID: ${conversationId}`);
+        core.setOutput('conversation-id', conversationId);
+      }
+    }
+
+    // Fire-and-forget mode: no local changes to check, backend handles PR creation
+    if (githubContext && githubContext.repository) {
+      core.info('Fire-and-forget mode: backend will handle PR creation via callback');
       core.setOutput('run-next-step', 'false');
       return { hasChanges: false, fireAndForget: true };
     }
