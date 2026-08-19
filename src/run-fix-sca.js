@@ -4,11 +4,8 @@ const os = require('os');
 const core = require('@actions/core');
 const exec = require('@actions/exec');
 
-async function runFixSca(workspaceDir, actionPath, fixScaParams) {
+async function runFixSca(workspaceDir, actionPath, fixScaParams, sourceCodeDir) {
   try {
-    const projectRootDir = '';
-    const projectPath = path.join(workspaceDir, 'source-code', projectRootDir);
-
     // Set up environment for veracode CLI
     const isWindows = process.platform === 'win32';
     const binaryName = isWindows ? 'veracode.exe' : 'veracode';
@@ -18,7 +15,7 @@ async function runFixSca(workspaceDir, actionPath, fixScaParams) {
     const args = [
       'fix',
       'sca',
-      projectPath,
+      sourceCodeDir,
       '--results',
       path.join(
         workspaceDir,
@@ -44,7 +41,8 @@ async function runFixSca(workspaceDir, actionPath, fixScaParams) {
     // Run veracode fix sca command
     core.info(`Running: ${veracodeBinary} ${args.join(' ')}`);
     await exec.exec(veracodeBinary, args, {
-      env: { ...process.env }
+      env: { ...process.env },
+      cwd: sourceCodeDir
     });
 
     // Check for changes in the repository
@@ -53,7 +51,7 @@ async function runFixSca(workspaceDir, actionPath, fixScaParams) {
 
     try {
       await exec.exec('git', ['diff', '--name-only', 'HEAD'], {
-        cwd: projectPath,
+        cwd: sourceCodeDir,
         listeners: {
           stdout: (data) => {
             gitDiffOutput += data.toString();
@@ -77,7 +75,7 @@ async function runFixSca(workspaceDir, actionPath, fixScaParams) {
     core.info('----- Git diff -----');
     try {
       await exec.exec('git', ['--no-pager', 'diff'], {
-        cwd: projectPath
+        cwd: sourceCodeDir
       });
     } catch (error) {
       core.warning(`Failed to show git diff: ${error.message}`);
