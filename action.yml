@@ -29,6 +29,10 @@ inputs:
     description: "Fix transitive dependencies (default: true)"
     required: false
     default: 'true'
+  fix-remote:
+    description: "Fix remote flag (default: false)"
+    required: false
+    default: 'false'
 
 # outputs:
 #   run-next-step:
