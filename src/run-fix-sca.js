@@ -222,7 +222,7 @@ async function runFixSca(workspaceDir, actionPath, fixScaParams, githubContext) 
     // Fire-and-forget mode: backend handles job polling, PR creation, etc.
     // Check this FIRST to avoid unnecessary UUID parsing for polling mode
     if (githubContext && githubContext.repository) {
-      core.info('✓ Fire-and-forget mode detected: backend will handle PR creation');
+      core.debug('Fire-and-forget mode: backend will handle processing');
       if (conversationId) {
         core.debug(
           `Conversation ID: ${conversationId} (use for debugging)`
@@ -309,7 +309,7 @@ async function runFixSca(workspaceDir, actionPath, fixScaParams, githubContext) 
     core.info(`    Runner released at: ${new Date(runnerEndTime).toISOString()}`);
     core.info(`    Total runner active time: ${executionTimeSec}s`);
     core.info(`    ⚡ Runner released IMMEDIATELY after job submission`);
-    core.info(`    ⚡ Backend processes job asynchronously while runner is freed`);
+    core.info(`    ⚡ [GitHub Actions] Backend processes job asynchronously while runner is freed`);
     core.info('════════════════════════════════════════════════════════════════');
   }
 }
