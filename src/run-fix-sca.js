@@ -215,46 +215,46 @@ async function runFixSca(workspaceDir, actionPath, fixScaParams, githubContext) 
       );
     }
 
-    // Parse job IDs and conversation IDs from CLI output
-    // Extract conversation ID for tracking (works for both fire-and-forget and polling)
-    const uuidPattern = /[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/g;
-    const allUuids = cliOutput.match(uuidPattern) || [];
+    // Extract conversation ID from response headers (works for both modes)
     const conversationIdMatch = cliOutput.match(/X-Conversation-Id=\["([a-f0-9\-]+)"\]/);
     const conversationId = conversationIdMatch ? conversationIdMatch[1] : null;
 
-    // In fire-and-forget mode (GitHub Actions), job ID is not returned by CLI
+    // Fire-and-forget mode: backend handles job polling, PR creation, etc.
+    // Check this FIRST to avoid unnecessary UUID parsing for polling mode
     if (githubContext && githubContext.repository) {
+      core.info('✓ Fire-and-forget mode detected: backend will handle PR creation');
       if (conversationId) {
         core.debug(
           `Conversation ID: ${conversationId} (use for debugging)`
         );
         core.setOutput('conversation-id', conversationId);
       }
-    } else {
-      // Job IDs: "jobID":"<uuid>" or "jobIDs":["<uuid>", ...]
-      if (allUuids.length > 0) {
-        // Deduplicate UUIDs and take first as job ID
-        const uniqueUuids = [...new Set(allUuids)];
-        jobId = uniqueUuids[0];
-        core.info(`✓ Captured Fix SCA Job ID: ${jobId}`);
-        core.setOutput('fix-job-id', jobId);
-      } else {
-        core.warning('Could not parse job ID from CLI output');
-        // Log last 500 chars of output for debugging
-        const outputTail = cliOutput.slice(-500);
-        core.info(`Last output: ${outputTail}`);
-      }
-
-      if (conversationId) {
-        core.info(`Conversation ID: ${conversationId}`);
-        core.setOutput('conversation-id', conversationId);
-      }
-    }
-
-    // Fire-and-forget mode: no local changes to check, backend handles PR creation
-    if (githubContext && githubContext.repository) {
       core.setOutput('run-next-step', 'false');
       return { hasChanges: false, fireAndForget: true };
+    }
+
+    // Polling mode: parse job ID from CLI output for manual polling by user
+    // This is only used when there's NO GitHub context (manual CLI invocation)
+    const uuidPattern = /[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/g;
+    const allUuids = cliOutput.match(uuidPattern) || [];
+
+    // Job IDs: "jobID":"<uuid>" or "jobIDs":["<uuid>", ...]
+    if (allUuids.length > 0) {
+      // Deduplicate UUIDs and take first as job ID
+      const uniqueUuids = [...new Set(allUuids)];
+      jobId = uniqueUuids[0];
+      core.info(`✓ Captured Fix SCA Job ID: ${jobId}`);
+      core.setOutput('fix-job-id', jobId);
+    } else {
+      core.warning('Could not parse job ID from CLI output');
+      // Log last 500 chars of output for debugging
+      const outputTail = cliOutput.slice(-500);
+      core.info(`Last output: ${outputTail}`);
+    }
+
+    if (conversationId) {
+      core.info(`Conversation ID: ${conversationId}`);
+      core.setOutput('conversation-id', conversationId);
     }
 
     // Check for changes in the repository (polling mode only)
