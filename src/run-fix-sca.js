@@ -5,7 +5,17 @@ const core = require('@actions/core');
 const exec = require('@actions/exec');
 
 async function runFixSca(workspaceDir, actionPath, fixScaParams, githubContext) {
+  const runnerStartTime = Date.now();
+
   try {
+    // Log GitHub runner pickup
+    core.info('════════════════════════════════════════════════════════════════');
+    core.info('🟢 GITHUB RUNNER PICKED UP - Job started on runner');
+    core.info(`    Runner OS: ${process.env.RUNNER_OS || 'Linux'}`);
+    core.info(`    Runner name: GitHub Actions ${process.env.RUNNER_NUMBER || 'unknown'}`);
+    core.info(`    Started at: ${new Date(runnerStartTime).toISOString()}`);
+    core.info('════════════════════════════════════════════════════════════════');
+
     const projectRootDir = '';
     const projectPath = path.join(workspaceDir, 'source-code', projectRootDir);
 
@@ -288,6 +298,19 @@ async function runFixSca(workspaceDir, actionPath, fixScaParams, githubContext) 
     return { hasChanges: true };
   } catch (error) {
     throw new Error(`Failed to run Fix for SCA: ${error.message}`);
+  } finally {
+    // Log GitHub runner release with duration
+    const runnerEndTime = Date.now();
+    const executionTimeMs = runnerEndTime - runnerStartTime;
+    const executionTimeSec = (executionTimeMs / 1000).toFixed(2);
+
+    core.info('════════════════════════════════════════════════════════════════');
+    core.info('🔴 GITHUB RUNNER RELEASED - Action exiting');
+    core.info(`    Runner released at: ${new Date(runnerEndTime).toISOString()}`);
+    core.info(`    Total runner active time: ${executionTimeSec}s`);
+    core.info(`    ⚡ Runner released IMMEDIATELY after job submission`);
+    core.info(`    ⚡ Backend processes job asynchronously while runner is freed`);
+    core.info('════════════════════════════════════════════════════════════════');
   }
 }
 

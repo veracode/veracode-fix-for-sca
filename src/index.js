@@ -5,8 +5,6 @@ const setupAstGrep = require('./setup-ast-grep');
 const runFixSca = require('./run-fix-sca');
 
 async function main() {
-  const actionStartTime = Date.now();
-
   try {
     // Get inputs
     const repository = core.getInput('repository');
@@ -69,19 +67,6 @@ async function main() {
     }
   } catch (error) {
     core.setFailed(error.message);
-  } finally {
-    // Always log runner release, even if there were errors
-    const actionEndTime = Date.now();
-    const executionTimeMs = actionEndTime - actionStartTime;
-    const executionTimeSec = (executionTimeMs / 1000).toFixed(2);
-
-    core.info('════════════════════════════════════════════════════════════════');
-    core.info('🔴 GITHUB RUNNER RELEASED - Action exiting');
-    core.info(`    Action completed at: ${new Date(actionEndTime).toISOString()}`);
-    core.info(`    Total action execution time: ${executionTimeSec}s`);
-    core.info(`    ⚡ Runner released IMMEDIATELY after job submission`);
-    core.info(`    ⚡ Backend processes job asynchronously while runner is freed`);
-    core.info('════════════════════════════════════════════════════════════════');
   }
 }
 
