@@ -26,7 +26,7 @@ inputs:
   fix-remote:
     description: "Fix remote flag (default: false)"
     required: false
-    default: 'true'
+    default: 'false'
 
 outputs:
   fix-job-id:
