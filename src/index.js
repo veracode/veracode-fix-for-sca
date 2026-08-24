@@ -11,36 +11,16 @@ async function main() {
     const branch = core.getInput('branch');
     const prNumber = core.getInput('pr-number');
     const fixScaParams = core.getInput('fix-sca-params');
-    const fixTransitive = core.getInput('fix-transitive');
-    const fixRemote = core.getInput('fix-remote');
 
     const workspaceDir = process.env.GITHUB_WORKSPACE;
     const actionPath = `${__dirname}/..`
+    const sourceCodeDir = path.join(workspaceDir, 'source-code');
 
     core.info('Starting Veracode Fix for SCA action...');
 
-    // Log all inputs from action.yml
-    core.info('=== ACTION INPUTS (from action.yml) ===');
-    core.info(`repository: ${repository}`);
-    core.info(`branch: ${branch}`);
-    core.info(`pr-number: ${prNumber}`);
-    core.info(`fix-sca-params: ${fixScaParams || 'NOT SET'}`);
-    core.info(`fix-transitive: ${fixTransitive}`);
-    core.info(`fix-remote: ${fixRemote}`);
-    core.info('=====================================');
-
-    core.info(`GITHUB_WORKSPACE: ${workspaceDir}`);
-    core.info(`CLI_PATH: ${process.env.CLI_PATH}`);
-
     // Setup ast-grep
     core.info('Setting up ast-grep...');
-    try {
-      await setupAstGrep(actionPath);
-      core.info('ast-grep setup completed successfully');
-    } catch (astGrepError) {
-      core.error(`ast-grep setup failed: ${astGrepError.message}`);
-      throw astGrepError;
-    }
+    await setupAstGrep(actionPath);
 
     // Run Fix for SCA
     core.info('Running Fix for SCA...');
@@ -66,6 +46,7 @@ async function main() {
     }
   } catch (error) {
     core.setFailed(error.message);
+    process.exit(1);
   }
 }
 
