@@ -11,6 +11,7 @@ async function main() {
     const branch = core.getInput('branch');
     const prNumber = core.getInput('pr-number');
     const fixScaParams = core.getInput('fix-sca-params');
+    const workflowRunId = core.getInput('workflow-run-id');
 
     const workspaceDir = process.env.GITHUB_WORKSPACE;
     const actionPath = `${__dirname}/..`
@@ -28,6 +29,7 @@ async function main() {
     try {
       // GitHub context is always passed — both /auto-fix and /fix-sessions support fire-and-forget
       // Backend detects fire-and-forget based on presence of github_context
+      const runId = workflowRunId || process.env.GITHUB_RUN_ID;
       const githubContext = {
         repository: {
           full_name: repository,
@@ -36,7 +38,7 @@ async function main() {
           branch: branch,
         },
         issue_number: prNumber ? parseInt(prNumber) : null,
-        run_id: process.env.GITHUB_RUN_ID,
+        run_id: runId,
       };
       fixScaOutput = await runFixSca(workspaceDir, actionPath, fixScaParams, githubContext);
     } catch (fixScaError) {
