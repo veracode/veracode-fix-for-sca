@@ -89,8 +89,6 @@ async function runFixSca(workspaceDir, actionPath, fixScaParams, githubContext) 
       projectPath,
       '--results',
       scaResultsPath,
-      '--async',
-      '--verbose',  // Add verbose mode to capture job ID
     ];
 
     // Conditionally add --transitive flag (default: true)
