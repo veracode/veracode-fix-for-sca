@@ -59,7 +59,6 @@ async function main() {
         run_id: process.env.GITHUB_RUN_ID,
       };
       fixScaOutput = await runFixSca(workspaceDir, actionPath, fixScaParams, githubContext);
-      // Messages are logged by the sca-fix library (especially important in fire-and-forget mode)
     } catch (fixScaError) {
       core.error(`Fix for SCA failed: ${fixScaError.message}`);
       core.setOutput('run-next-step', 'false');
