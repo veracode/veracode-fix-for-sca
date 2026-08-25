@@ -27,6 +27,9 @@ inputs:
     description: "Fix remote flag (default: false)"
     required: false
     default: 'true'
+  workflow-run-id:
+    description: "GitHub workflow run ID for linking to workflow in PR comments"
+    required: false
 
 outputs:
   fix-job-id:

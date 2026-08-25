@@ -31079,6 +31079,8 @@ const os = __nccwpck_require__(857);
 const core = __nccwpck_require__(7484);
 const exec = __nccwpck_require__(5236);
 
+// Updated to remove --async and --verbose flags for cleaner logging
+
 async function runFixSca(workspaceDir, actionPath, fixScaParams, githubContext) {
   try {
     const projectRootDir = '';
@@ -31164,8 +31166,6 @@ async function runFixSca(workspaceDir, actionPath, fixScaParams, githubContext) 
       projectPath,
       '--results',
       scaResultsPath,
-      '--async',
-      '--verbose',  // Add verbose mode to capture job ID
     ];
 
     // Conditionally add --transitive flag (default: true)
@@ -31191,6 +31191,7 @@ async function runFixSca(workspaceDir, actionPath, fixScaParams, githubContext) 
 
     let cliOutput = '';
     let jobId = null;
+    let cliExitCode = 0;
 
     // Pass GitHub context via environment variables (safe metadata only, no tokens)
     const env = { ...process.env };
@@ -31207,26 +31208,106 @@ async function runFixSca(workspaceDir, actionPath, fixScaParams, githubContext) 
       }
     }
 
-    await exec.exec(veracodeBinary, args, {
-      env: env,
-      listeners: {
-        stdout: (data) => {
-          cliOutput += data.toString();
-          core.info(data.toString());
+    try {
+      cliExitCode = await exec.exec(veracodeBinary, args, {
+        env: env,
+        listeners: {
+          stdout: (data) => {
+            cliOutput += data.toString();
+            // CLI output goes directly to GitHub Actions console
+            // Don't re-log via core.info to avoid duplication
+          },
+          stderr: (data) => {
+            cliOutput += data.toString();
+            // CLI errors go directly to GitHub Actions console
+            // Don't re-log via core.warning to avoid duplication
+          }
         },
-        stderr: (data) => {
-          cliOutput += data.toString();
-          core.warning(data.toString());
-        }
+        ignoreReturnCode: true,
+      });
+    } catch (error) {
+      core.error(`[CLI_ERROR] Failed to execute veracode CLI: ${error.message}`);
+      throw error;
+    }
+
+    // Check for CLI errors - if exit code is non-zero, submission likely failed
+    if (cliExitCode !== 0) {
+      // Extract error details from CLI output
+      const errorLines = cliOutput
+        .split('\n')
+        .filter((line) => line.includes('ERR') || line.includes('Error'))
+        .slice(-5)
+        .join('\n');
+
+      core.error(
+        `[CLI_SUBMISSION_FAILED] CLI exited with code ${cliExitCode}`
+      );
+      core.error(`[CLI_SUBMISSION_FAILED] Recent errors:\n${errorLines}`);
+
+      // Check for specific HTTP error codes in output
+      const has500Error = cliOutput.includes('500 Internal Server Error');
+      const has400Error = cliOutput.includes('400') || cliOutput.includes('Bad Request');
+      const has401Error = cliOutput.includes('401') || cliOutput.includes('Unauthorized');
+      const has403Error = cliOutput.includes('403') || cliOutput.includes('Forbidden');
+
+      if (has500Error) {
+        core.error(
+          '[BACKEND_ERROR] Backend service returned 500 Internal Server Error'
+        );
+      } else if (has400Error) {
+        core.error('[BACKEND_ERROR] Backend service returned 400 Bad Request');
+      } else if (has401Error) {
+        core.error('[BACKEND_ERROR] Backend service returned 401 Unauthorized');
+      } else if (has403Error) {
+        core.error('[BACKEND_ERROR] Backend service returned 403 Forbidden');
       }
-    });
 
-    // Parse job_id from CLI output (async mode returns "Job ID: <uuid>")
-    const jobIdPattern = /Job\s+ID:\s+([a-f0-9\-]+)/i;
-    const match = cliOutput.match(jobIdPattern);
+      // In fire-and-forget mode, still fail if submission didn't succeed
+      if (githubContext && githubContext.repository) {
+        core.error(
+          '[FIRE_AND_FORGET_FAILURE] Job submission failed. Backend was not reached.'
+        );
+        core.setOutput('run-next-step', 'false');
+        throw new Error(
+          `Fix SCA job submission failed with exit code ${cliExitCode}`
+        );
+      }
 
-    if (match && match[1]) {
-      jobId = match[1];
+      // For polling mode, also fail
+      core.setOutput('run-next-step', 'false');
+      throw new Error(
+        `Fix SCA job submission failed with exit code ${cliExitCode}`
+      );
+    }
+
+    // Extract conversation ID from response headers (works for both modes)
+    const conversationIdMatch = cliOutput.match(/X-Conversation-Id=\["([a-f0-9\-]+)"\]/);
+    const conversationId = conversationIdMatch ? conversationIdMatch[1] : null;
+
+    // Fire-and-forget mode: backend handles job polling, PR creation, etc.
+    // Check this FIRST to avoid unnecessary UUID parsing for polling mode
+    if (githubContext && githubContext.repository) {
+      core.debug('Fire-and-forget mode: backend will handle processing');
+      if (conversationId) {
+        core.debug(
+          `Conversation ID: ${conversationId} (use for debugging)`
+        );
+        core.setOutput('conversation-id', conversationId);
+      }
+      core.setOutput('run-next-step', 'false');
+      return { hasChanges: false, fireAndForget: true };
+    }
+
+    // Polling mode: parse job ID from CLI output for manual polling by user
+    // This is only used when there's NO GitHub context (manual CLI invocation)
+    const uuidPattern = /[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/g;
+    const allUuids = cliOutput.match(uuidPattern) || [];
+
+    // Job IDs: "jobID":"<uuid>" or "jobIDs":["<uuid>", ...]
+    if (allUuids.length > 0) {
+      // Deduplicate UUIDs and take first as job ID
+      const uniqueUuids = [...new Set(allUuids)];
+      jobId = uniqueUuids[0];
       core.info(`✓ Captured Fix SCA Job ID: ${jobId}`);
       core.setOutput('fix-job-id', jobId);
     } else {
@@ -31236,12 +31317,9 @@ async function runFixSca(workspaceDir, actionPath, fixScaParams, githubContext) 
       core.info(`Last output: ${outputTail}`);
     }
 
-    // Fire-and-forget mode: if GitHub context present, skip local PR creation
-    // Backend will handle PR creation via triggered workflow
-    if (githubContext && githubContext.repository) {
-      core.info('✓ Fire-and-forget mode detected: backend will handle PR creation');
-      core.setOutput('run-next-step', 'false');
-      return { hasChanges: false, fireAndForget: true };
+    if (conversationId) {
+      core.info(`Conversation ID: ${conversationId}`);
+      core.setOutput('conversation-id', conversationId);
     }
 
     // Check for changes in the repository (polling mode only)
@@ -31698,37 +31776,17 @@ async function main() {
     const branch = core.getInput('branch');
     const prNumber = core.getInput('pr-number');
     const fixScaParams = core.getInput('fix-sca-params');
-    const fixTransitive = core.getInput('fix-transitive');
-    const fixRemote = core.getInput('fix-remote');
+    const workflowRunId = core.getInput('workflow-run-id');
 
     const workspaceDir = process.env.GITHUB_WORKSPACE;
-    const statusFilePath = path.join(workspaceDir, 'source-code', 'sca-fix-status');
     const actionPath = `${__dirname}/..`
+    const sourceCodeDir = path.join(workspaceDir, 'source-code');
 
     core.info('Starting Veracode Fix for SCA action...');
 
-    // Log all inputs from action.yml
-    core.info('=== ACTION INPUTS (from action.yml) ===');
-    core.info(`repository: ${repository}`);
-    core.info(`branch: ${branch}`);
-    core.info(`pr-number: ${prNumber}`);
-    core.info(`fix-sca-params: ${fixScaParams || 'NOT SET'}`);
-    core.info(`fix-transitive: ${fixTransitive}`);
-    core.info(`fix-remote: ${fixRemote}`);
-    core.info('=====================================');
-
-    core.info(`GITHUB_WORKSPACE: ${workspaceDir}`);
-    core.info(`CLI_PATH: ${process.env.CLI_PATH}`);
-
     // Setup ast-grep
     core.info('Setting up ast-grep...');
-    try {
-      await setupAstGrep(actionPath);
-      core.info('ast-grep setup completed successfully');
-    } catch (astGrepError) {
-      core.error(`ast-grep setup failed: ${astGrepError.message}`);
-      throw astGrepError;
-    }
+    await setupAstGrep(actionPath);
 
     // Run Fix for SCA
     core.info('Running Fix for SCA...');
@@ -31736,6 +31794,7 @@ async function main() {
     try {
       // GitHub context is always passed — both /auto-fix and /fix-sessions support fire-and-forget
       // Backend detects fire-and-forget based on presence of github_context
+      const runId = workflowRunId || process.env.GITHUB_RUN_ID;
       const githubContext = {
         repository: {
           full_name: repository,
@@ -31744,20 +31803,14 @@ async function main() {
           branch: branch,
         },
         issue_number: prNumber ? parseInt(prNumber) : null,
-        run_id: process.env.GITHUB_RUN_ID,
+        run_id: runId,
       };
       fixScaOutput = await runFixSca(workspaceDir, actionPath, fixScaParams, githubContext);
-      core.info('Fix for SCA completed');
     } catch (fixScaError) {
       core.error(`Fix for SCA failed: ${fixScaError.message}`);
       core.setOutput('run-next-step', 'false');
       throw fixScaError;
     }
-
-    // In fire-and-forget mode (GitHub context present), backend handles PR creation
-    core.info('✓ Fix for SCA job submitted to backend');
-    core.info('Workflow exiting - PR creation will be handled by follow-up workflow triggered by backend if applicable');
-    core.info('Veracode Fix for SCA action completed successfully.');
   } catch (error) {
     core.setFailed(error.message);
     process.exit(1);

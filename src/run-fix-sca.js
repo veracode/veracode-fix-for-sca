@@ -4,6 +4,8 @@ const os = require('os');
 const core = require('@actions/core');
 const exec = require('@actions/exec');
 
+// Updated to remove --async and --verbose flags for cleaner logging
+
 async function runFixSca(workspaceDir, actionPath, fixScaParams, githubContext) {
   try {
     const projectRootDir = '';
