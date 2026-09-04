@@ -25,14 +25,10 @@ inputs:
   fix-sca-params:
     description: "Additional parameters for Fix SCA command"
     required: false
-  fix-transitive:
-    description: "Fix transitive dependencies (default: true)"
-    required: false
-    default: 'true'
   fix-remote:
-    description: "Fix remote flag (default: false)"
-    required: false
-    default: 'false'
+    description: "Fix remote flag (default: true)"
+    required: true
+    default: 'true'
 
 # outputs:
 #   run-next-step:
