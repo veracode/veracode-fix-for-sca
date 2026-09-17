@@ -151,7 +151,6 @@ async function runFixSca(workspaceDir, actionPath, fixScaParams, githubContext) 
         );
       }
 
-      // For polling mode, also fail
       core.setOutput('run-next-step', 'false');
       throw new Error(
         `Fix SCA job submission failed with exit code ${cliExitCode}`
