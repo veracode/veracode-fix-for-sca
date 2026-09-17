@@ -26,18 +26,10 @@ inputs:
   fix-remote:
     description: "Fix remote flag (default: false)"
     required: false
-    default: 'true'
+    default: 'false'
   workflow-run-id:
     description: "GitHub workflow run ID for linking to workflow in PR comments"
     required: false
-
-outputs:
-  fix-job-id:
-    description: "Veracode Fix for SCA job ID (async mode)"
-    value: ${{ steps.run-fix-sca.outputs.fix-job-id }}
-  conversation-id:
-    description: "Veracode CLI conversation ID for request tracing"
-    value: ${{ steps.run-fix-sca.outputs.conversation-id }}
 
 runs:
   using: "node24"

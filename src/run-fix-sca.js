@@ -157,7 +157,7 @@ async function runFixSca(workspaceDir, actionPath, fixScaParams, githubContext) 
       );
     }
 
-    // Extract conversation ID from response headers (works for both modes)
+    // Extract conversation ID from response headers
     const conversationIdMatch = cliOutput.match(/X-Conversation-Id=\["([a-f0-9\-]+)"\]/);
     const conversationId = conversationIdMatch ? conversationIdMatch[1] : null;
 
@@ -168,18 +168,10 @@ async function runFixSca(workspaceDir, actionPath, fixScaParams, githubContext) 
         core.debug(
           `Conversation ID: ${conversationId} (use for debugging)`
         );
-        core.setOutput('conversation-id', conversationId);
       }
       core.setOutput('run-next-step', 'false');
       return { hasChanges: false, fireAndForget: true };
     }
-
-    // Fallback: log job submission for debugging if no GitHub context
-    if (conversationId) {
-      core.info(`Conversation ID: ${conversationId}`);
-      core.setOutput('conversation-id', conversationId);
-    }
-    return { hasChanges: false };
   } catch (error) {
     throw new Error(`Failed to run Fix for SCA: ${error.message}`);
   }
