@@ -66,7 +66,7 @@ async function runFixSca(workspaceDir, actionPath, fixScaParams, githubContext) 
       args.push('-i', fixScaParams);
     }
 
-    // Run veracode fix sca command with async mode
+    // Run veracode fix sca command
     core.info(`Running: ${veracodeBinary} ${args.join(' ')}`);
 
     let cliOutput = '';

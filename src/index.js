@@ -27,8 +27,6 @@ async function main() {
     core.info('Running Fix for SCA...');
     let fixScaOutput;
     try {
-      // GitHub context is always passed — both /auto-fix and /fix-sessions support fire-and-forget
-      // Backend detects fire-and-forget based on presence of github_context
       const runId = workflowRunId || process.env.GITHUB_RUN_ID;
       const githubContext = {
         repository: {
