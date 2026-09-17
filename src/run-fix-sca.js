@@ -4,8 +4,6 @@ const os = require('os');
 const core = require('@actions/core');
 const exec = require('@actions/exec');
 
-// Updated to remove --async and --verbose flags for cleaner logging
-
 async function runFixSca(workspaceDir, actionPath, fixScaParams, githubContext) {
   try {
     const projectRootDir = '';
@@ -23,15 +21,12 @@ async function runFixSca(workspaceDir, actionPath, fixScaParams, githubContext) 
 
     // Find SCA results file
     const artifactDir = path.join(workspaceDir, 'veracode_artifact_directory');
-    let scaResultsPath = null;
-
-    // Try different possible paths for scaResults.json
     const possiblePaths = [
       path.join(artifactDir, 'Veracode Agent Based SCA Results', 'scaResults.json'),
       path.join(artifactDir, 'scaResults.json'),
-      // Also check for any json file in the artifact directory
     ];
 
+    let scaResultsPath = null;
     for (const possiblePath of possiblePaths) {
       if (fs.existsSync(possiblePath)) {
         scaResultsPath = possiblePath;
@@ -40,48 +35,8 @@ async function runFixSca(workspaceDir, actionPath, fixScaParams, githubContext) 
       }
     }
 
-    // If still not found, list directory contents for debugging
     if (!scaResultsPath) {
-      core.warning(`SCA results not found. Listing artifact directory contents:`);
-      const listDir = (dir, prefix = '') => {
-        if (fs.existsSync(dir)) {
-          const files = fs.readdirSync(dir);
-          files.forEach(file => {
-            const fullPath = path.join(dir, file);
-            const stat = fs.statSync(fullPath);
-            core.info(`${prefix}${file}${stat.isDirectory() ? '/' : ''}`);
-            if (stat.isDirectory() && prefix.length < 20) {
-              listDir(fullPath, prefix + '  ');
-            }
-          });
-        }
-      };
-      listDir(artifactDir);
-
-      // Try to find any json file
-      const findJsonFiles = (dir) => {
-        if (fs.existsSync(dir)) {
-          const files = fs.readdirSync(dir);
-          for (const file of files) {
-            if (file.endsWith('.json')) {
-              return path.join(dir, file);
-            }
-            const fullPath = path.join(dir, file);
-            if (fs.statSync(fullPath).isDirectory()) {
-              const found = findJsonFiles(fullPath);
-              if (found) return found;
-            }
-          }
-        }
-        return null;
-      };
-
-      scaResultsPath = findJsonFiles(artifactDir);
-      if (scaResultsPath) {
-        core.info(`Using found JSON file: ${scaResultsPath}`);
-      } else {
-        throw new Error(`Could not find SCA results file in ${artifactDir}`);
-      }
+      throw new Error(`Could not find SCA results file in ${artifactDir}`);
     }
 
     // Build command arguments
@@ -118,12 +73,10 @@ async function runFixSca(workspaceDir, actionPath, fixScaParams, githubContext) 
     let jobId = null;
     let cliExitCode = 0;
 
-    // Pass GitHub context via environment variables (safe metadata only, no tokens)
+    // Pass GitHub context via environment variables (4 required fields only)
     const env = { ...process.env };
     if (githubContext && githubContext.repository) {
       env.GITHUB_REPOSITORY = githubContext.repository.full_name;
-      env.GITHUB_REPOSITORY_OWNER = githubContext.repository.owner;
-      env.GITHUB_REPOSITORY_NAME = githubContext.repository.name;
       env.GITHUB_REF_NAME = githubContext.repository.branch;
       if (githubContext.issue_number) {
         env.GITHUB_ISSUE_NUMBER = githubContext.issue_number.toString();
@@ -210,7 +163,6 @@ async function runFixSca(workspaceDir, actionPath, fixScaParams, githubContext) 
     const conversationId = conversationIdMatch ? conversationIdMatch[1] : null;
 
     // Fire-and-forget mode: backend handles job polling, PR creation, etc.
-    // Check this FIRST to avoid unnecessary UUID parsing for polling mode
     if (githubContext && githubContext.repository) {
       core.debug('Fire-and-forget mode: backend will handle processing');
       if (conversationId) {
@@ -223,69 +175,12 @@ async function runFixSca(workspaceDir, actionPath, fixScaParams, githubContext) 
       return { hasChanges: false, fireAndForget: true };
     }
 
-    // Polling mode: parse job ID from CLI output for manual polling by user
-    // This is only used when there's NO GitHub context (manual CLI invocation)
-    const uuidPattern = /[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/g;
-    const allUuids = cliOutput.match(uuidPattern) || [];
-
-    // Job IDs: "jobID":"<uuid>" or "jobIDs":["<uuid>", ...]
-    if (allUuids.length > 0) {
-      // Deduplicate UUIDs and take first as job ID
-      const uniqueUuids = [...new Set(allUuids)];
-      jobId = uniqueUuids[0];
-      core.info(`✓ Captured Fix SCA Job ID: ${jobId}`);
-      core.setOutput('fix-job-id', jobId);
-    } else {
-      core.warning('Could not parse job ID from CLI output');
-      // Log last 500 chars of output for debugging
-      const outputTail = cliOutput.slice(-500);
-      core.info(`Last output: ${outputTail}`);
-    }
-
+    // Fallback: log job submission for debugging if no GitHub context
     if (conversationId) {
       core.info(`Conversation ID: ${conversationId}`);
       core.setOutput('conversation-id', conversationId);
     }
-
-    // Check for changes in the repository (polling mode only)
-    let hasChanges = false;
-    let gitDiffOutput = '';
-
-    try {
-      await exec.exec('git', ['diff', '--name-only', 'HEAD'], {
-        cwd: projectPath,
-        listeners: {
-          stdout: (data) => {
-            gitDiffOutput += data.toString();
-          }
-        }
-      });
-
-      if (gitDiffOutput.trim().length > 0) {
-        hasChanges = true;
-      }
-    } catch (error) {
-      core.warning(`Failed to check git diff: ${error.message}`);
-    }
-
-    if (!hasChanges) {
-      core.info('No changes to existing files detected. Skipping branch creation and PR.');
-      core.setOutput('run-next-step', 'false');
-      return { hasChanges: false };
-    }
-
-    // Show git diff
-    core.info('----- Git diff -----');
-    try {
-      await exec.exec('git', ['--no-pager', 'diff'], {
-        cwd: projectPath
-      });
-    } catch (error) {
-      core.warning(`Failed to show git diff: ${error.message}`);
-    }
-
-    core.setOutput('run-next-step', 'true');
-    return { hasChanges: true };
+    return { hasChanges: false };
   } catch (error) {
     throw new Error(`Failed to run Fix for SCA: ${error.message}`);
   }
