@@ -70,7 +70,6 @@ async function runFixSca(workspaceDir, actionPath, fixScaParams, githubContext) 
     core.info(`Running: ${veracodeBinary} ${args.join(' ')}`);
 
     let cliOutput = '';
-    let jobId = null;
     let cliExitCode = 0;
 
     // Pass GitHub context via environment variables (4 required fields only)
@@ -92,13 +91,9 @@ async function runFixSca(workspaceDir, actionPath, fixScaParams, githubContext) 
         listeners: {
           stdout: (data) => {
             cliOutput += data.toString();
-            // CLI output goes directly to GitHub Actions console
-            // Don't re-log via core.info to avoid duplication
           },
           stderr: (data) => {
             cliOutput += data.toString();
-            // CLI errors go directly to GitHub Actions console
-            // Don't re-log via core.warning to avoid duplication
           }
         },
         ignoreReturnCode: true,
