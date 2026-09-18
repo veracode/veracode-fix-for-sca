@@ -1,9 +1,6 @@
 name: 'Veracode Fix for SCA'
 description: 'Automatically fixes vulnerabilities detected by Veracode SCA'
 inputs:
-  github-token:
-    description: "Github token to download artifacts and interact with GitHub API"
-    required: true
   sca-scan-run-id:
     description: "GitHub Actions run ID containing the SCA scan artifact"
     required: true
@@ -16,9 +13,6 @@ inputs:
   branch:
     description: "Target branch for the fix PR"
     required: true
-  github-api-url:
-    description: "GitHub API URL (e.g., https://api.github.com)"
-    required: true
   pr-number:
     description: "Original PR number to post comments on"
     required: true
@@ -26,19 +20,13 @@ inputs:
     description: "Additional parameters for Fix SCA command"
     required: false
   fix-remote:
-    description: "Fix remote flag (default: true)"
+    description: "Fix remote flag (default: false)"
     required: true
     default: 'true'
-
-# outputs:
-#   run-next-step:
-#     description: "Whether to continue with PR creation"
-#     value: ${{ steps.run-fix-sca.outputs.run-next-step }}
-#   create-pr-run-next-step:
-#     description: "Whether to continue with PR comment posting"
-#     value: ${{ steps.create-pr.outputs.run-next-step }}
+  workflow-run-id:
+    description: "GitHub workflow run ID for linking to workflow in PR comments"
+    required: false
 
 runs:
   using: "node24"
   main: "dist/index.js"
-  post: "dist/post/index.js"
