@@ -66,11 +66,12 @@ async function runFixSca(workspaceDir, actionPath, fixScaParams, githubContext) 
     let cliOutput = '';
     let cliExitCode = 0;
 
-    // Pass GitHub context via environment variables (4 required fields only)
+    // Pass GitHub context via environment variables
     const env = { ...process.env };
     if (githubContext && githubContext.repository) {
       env.GITHUB_REPOSITORY = githubContext.repository.full_name;
       env.GITHUB_REF_NAME = githubContext.repository.branch;
+      env.GITHUB_API_URL = githubContext.api_url;
       if (githubContext.issue_number) {
         env.GITHUB_ISSUE_NUMBER = githubContext.issue_number.toString();
       }
