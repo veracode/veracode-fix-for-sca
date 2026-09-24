@@ -12,6 +12,7 @@ async function main() {
     const prNumber = core.getInput('pr-number');
     const fixScaParams = core.getInput('fix-sca-params');
     const workflowRunId = core.getInput('workflow-run-id');
+    const githubApiUrl = core.getInput('github-api-url');
 
     const workspaceDir = process.env.GITHUB_WORKSPACE;
     const actionPath = `${__dirname}/..`
@@ -38,6 +39,9 @@ async function main() {
         issue_number: prNumber ? parseInt(prNumber) : null,
         run_id: runId,
       };
+      if (githubApiUrl) {
+        githubContext.api_url = githubApiUrl;
+      }
       fixScaOutput = await runFixSca(workspaceDir, actionPath, fixScaParams, githubContext);
     } catch (fixScaError) {
       core.error(`Fix for SCA failed: ${fixScaError.message}`);

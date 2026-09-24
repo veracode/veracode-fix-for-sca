@@ -19,6 +19,9 @@ inputs:
   fix-sca-params:
     description: "Additional parameters for Fix SCA command"
     required: false
+  github-api-url:
+    description: "GitHub API URL (e.g., https://api.github.com)"
+    required: false
   fix-remote:
     description: "Fix remote flag (default: false)"
     required: true
