@@ -9,6 +9,7 @@ async function main() {
     // Get inputs
     const fixScaParams = core.getInput('fix-sca-params');
     const workflowRunId = core.getInput('workflow-run-id');
+    const fnfFeatureFlag = core.getInput('fnf-feature-flag');
 
     const workspaceDir = process.env.GITHUB_WORKSPACE;
     const actionPath = `${__dirname}/..`;
@@ -23,8 +24,9 @@ async function main() {
     core.info('Running Fix for SCA...');
     let fixScaOutput;
     try {
-      const runId = workflowRunId || process.env.GITHUB_RUN_ID;
-      fixScaOutput = await runFixSca(workspaceDir, actionPath, fixScaParams, runId);
+      const gitWorkflowRunId = workflowRunId || process.env.GITHUB_RUN_ID;
+      const enableFnf = fnfFeatureFlag?.toLowerCase() === 'true';
+      fixScaOutput = await runFixSca(workspaceDir, actionPath, fixScaParams, gitWorkflowRunId, enableFnf);
     } catch (fixScaError) {
       core.error(`Fix for SCA failed: ${fixScaError.message}`);
       core.setOutput('run-next-step', 'false');
