@@ -4,7 +4,7 @@ const os = require('os');
 const core = require('@actions/core');
 const exec = require('@actions/exec');
 
-async function runFixSca(workspaceDir, actionPath, fixScaParams, githubContext) {
+async function runFixSca(workspaceDir, actionPath, fixScaParams, workflowRunId) {
   try {
     const projectRootDir = '';
     const projectPath = path.join(workspaceDir, 'source-code', projectRootDir);
@@ -66,18 +66,10 @@ async function runFixSca(workspaceDir, actionPath, fixScaParams, githubContext) 
     let cliOutput = '';
     let cliExitCode = 0;
 
-    // Pass GitHub context via environment variables
+    // Pass workflow run ID via environment variable for fire-and-forget callback
     const env = { ...process.env };
-    if (githubContext && githubContext.repository) {
-      env.GITHUB_REPOSITORY = githubContext.repository.full_name;
-      env.GITHUB_REF_NAME = githubContext.repository.branch;
-      env.GITHUB_API_URL = githubContext.api_url;
-      if (githubContext.issue_number) {
-        env.GITHUB_ISSUE_NUMBER = githubContext.issue_number.toString();
-      }
-      if (githubContext.run_id) {
-        env.GITHUB_RUN_ID = githubContext.run_id.toString();
-      }
+    if (workflowRunId) {
+      env.GITHUB_RUN_ID = workflowRunId.toString();
     }
 
     try {

@@ -7,16 +7,11 @@ const runFixSca = require('./run-fix-sca');
 async function main() {
   try {
     // Get inputs
-    const repository = core.getInput('repository');
-    const branch = core.getInput('branch');
-    const githubApiUrl = core.getInput('github-api-url');
-    const prNumber = core.getInput('pr-number');
     const fixScaParams = core.getInput('fix-sca-params');
     const workflowRunId = core.getInput('workflow-run-id');
 
     const workspaceDir = process.env.GITHUB_WORKSPACE;
-    const actionPath = `${__dirname}/..`
-    const sourceCodeDir = path.join(workspaceDir, 'source-code');
+    const actionPath = `${__dirname}/..`;
 
     core.info('Starting Veracode Fix for SCA action...');
 
@@ -29,18 +24,7 @@ async function main() {
     let fixScaOutput;
     try {
       const runId = workflowRunId || process.env.GITHUB_RUN_ID;
-      const githubContext = {
-        repository: {
-          full_name: repository,
-          owner: repository.split('/')[0],
-          name: repository.split('/')[1],
-          branch: branch,
-        },
-        issue_number: prNumber ? parseInt(prNumber) : null,
-        run_id: runId,
-        api_url: githubApiUrl,
-      };
-      fixScaOutput = await runFixSca(workspaceDir, actionPath, fixScaParams, githubContext);
+      fixScaOutput = await runFixSca(workspaceDir, actionPath, fixScaParams, runId);
     } catch (fixScaError) {
       core.error(`Fix for SCA failed: ${fixScaError.message}`);
       core.setOutput('run-next-step', 'false');
