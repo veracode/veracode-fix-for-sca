@@ -16,6 +16,7 @@ async function main() {
     const prNumber = core.getInput('pr-number');
     const fixScaParams = core.getInput('fix-sca-params');
     const fnfFeatureFlag = core.getInput('fnf-feature-flag');
+    const scaScanRunId = core.getInput('sca-scan-run-id');
 
 
     const workspaceDir = process.env.GITHUB_WORKSPACE;
@@ -34,7 +35,7 @@ async function main() {
     const enableFnf = fnfFeatureFlag === 'true';
     let fixScaOutput;
     try {
-      fixScaOutput = await runFixSca(workspaceDir, actionPath, fixScaParams, enableFnf);
+      fixScaOutput = await runFixSca(workspaceDir, actionPath, fixScaParams, enableFnf, scaScanRunId);
     } catch (fixScaError) {
       core.error(`Fix for SCA failed: ${fixScaError.message}`);
       core.setOutput('run-next-step', 'false');

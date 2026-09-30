@@ -4,7 +4,7 @@ const os = require('os');
 const core = require('@actions/core');
 const exec = require('@actions/exec');
 
-async function runFixSca(workspaceDir, actionPath, fixScaParams, enableFnf = false) {
+async function runFixSca(workspaceDir, actionPath, fixScaParams, enableFnf = false, scaScanRunId = null) {
   try {
     const projectRootDir = '';
     const sourceCodeDir = path.join(workspaceDir, 'source-code', projectRootDir);
@@ -66,11 +66,14 @@ async function runFixSca(workspaceDir, actionPath, fixScaParams, enableFnf = fal
     let cliOutput = '';
     let cliExitCode = 0;
 
-    // Pass GitHub workflow run ID and feature flag via environment variables for fire-and-forget callback
+    // Pass GitHub context via environment variables for fire-and-forget callback
     const env = { ...process.env };
     if (enableFnf) {
       env.FNF_FEATURE_FLAG = 'true';
       env.WORKFLOW_RUN_ID = process.env.GITHUB_RUN_ID;
+      if (scaScanRunId) {
+        env.SCA_SCAN_RUN_ID = scaScanRunId;
+      }
     }
 
     try {
