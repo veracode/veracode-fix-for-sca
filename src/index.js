@@ -15,7 +15,6 @@ async function main() {
     const githubApiUrl = core.getInput('github-api-url');
     const prNumber = core.getInput('pr-number');
     const fixScaParams = core.getInput('fix-sca-params');
-    const scaScanRunId = core.getInput('sca-scan-run-id');
     const fnfFeatureFlag = core.getInput('fnf-feature-flag');
 
 
@@ -32,10 +31,10 @@ async function main() {
 
     // Run Fix for SCA
     core.info('Running Fix for SCA...');
-    const enableFnf = fnfFeatureFlag?.toLowerCase() === 'true';
+    const enableFnf = fnfFeatureFlag === 'true';
     let fixScaOutput;
     try {
-      fixScaOutput = await runFixSca(workspaceDir, actionPath, fixScaParams, scaScanRunId, enableFnf);
+      fixScaOutput = await runFixSca(workspaceDir, actionPath, fixScaParams, enableFnf);
     } catch (fixScaError) {
       core.error(`Fix for SCA failed: ${fixScaError.message}`);
       core.setOutput('run-next-step', 'false');
