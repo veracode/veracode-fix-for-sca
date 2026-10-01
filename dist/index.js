@@ -88640,7 +88640,7 @@ const os = __nccwpck_require__(70857);
 const core = __nccwpck_require__(37484);
 const exec = __nccwpck_require__(95236);
 
-async function runFixSca(workspaceDir, actionPath, fixScaParams, scaScanRunId, enableFnf = false) {
+async function runFixSca(workspaceDir, actionPath, fixScaParams, enableFnf = false, scaScanRunId = null) {
   try {
     const projectRootDir = '';
     const sourceCodeDir = path.join(workspaceDir, 'source-code', projectRootDir);
@@ -88702,11 +88702,11 @@ async function runFixSca(workspaceDir, actionPath, fixScaParams, scaScanRunId, e
     let cliOutput = '';
     let cliExitCode = 0;
 
-    // Pass SCA scan run ID and feature flag via environment variables for fire-and-forget callback
-    // Only pass SCA_SCAN_RUN_ID when FNF mode is enabled to avoid unintended FNF triggering
+    // Pass GitHub context via environment variables for fire-and-forget callback
     const env = { ...process.env };
     if (enableFnf) {
       env.FNF_FEATURE_FLAG = 'true';
+      env.WORKFLOW_RUN_ID = process.env.GITHUB_RUN_ID;
       if (scaScanRunId) {
         env.SCA_SCAN_RUN_ID = scaScanRunId;
       }
@@ -145319,8 +145319,8 @@ async function main() {
     const githubApiUrl = core.getInput('github-api-url');
     const prNumber = core.getInput('pr-number');
     const fixScaParams = core.getInput('fix-sca-params');
-    const scaScanRunId = core.getInput('sca-scan-run-id');
     const fnfFeatureFlag = core.getInput('fnf-feature-flag');
+    const scaScanRunId = core.getInput('sca-scan-run-id');
 
 
     const workspaceDir = process.env.GITHUB_WORKSPACE;
@@ -145336,10 +145336,10 @@ async function main() {
 
     // Run Fix for SCA
     core.info('Running Fix for SCA...');
-    const enableFnf = fnfFeatureFlag?.toLowerCase() === 'true';
+    const enableFnf = fnfFeatureFlag === 'true';
     let fixScaOutput;
     try {
-      fixScaOutput = await runFixSca(workspaceDir, actionPath, fixScaParams, scaScanRunId, enableFnf);
+      fixScaOutput = await runFixSca(workspaceDir, actionPath, fixScaParams, enableFnf, scaScanRunId);
     } catch (fixScaError) {
       core.error(`Fix for SCA failed: ${fixScaError.message}`);
       core.setOutput('run-next-step', 'false');
