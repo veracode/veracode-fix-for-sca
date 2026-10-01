@@ -88640,12 +88640,40 @@ const os = __nccwpck_require__(70857);
 const core = __nccwpck_require__(37484);
 const exec = __nccwpck_require__(95236);
 
-async function runFixSca(workspaceDir, actionPath, fixScaParams, sourceCodeDir) {
+async function runFixSca(workspaceDir, actionPath, fixScaParams, enableFnf = false, scaScanRunId = null) {
   try {
+    const projectRootDir = '';
+    const sourceCodeDir = path.join(workspaceDir, 'source-code', projectRootDir);
+
+    core.info(`Project path: ${sourceCodeDir}`);
+
     // Set up environment for veracode CLI
     const isWindows = process.platform === 'win32';
     const binaryName = isWindows ? 'veracode.exe' : 'veracode';
     const veracodeBinary = path.join(`${process.env.CLI_PATH}`, binaryName);
+
+    core.info(`Veracode binary: ${veracodeBinary}`);
+    core.info(`Binary exists: ${fs.existsSync(veracodeBinary)}`);
+
+    // Find SCA results file
+    const artifactDir = path.join(workspaceDir, 'veracode_artifact_directory');
+    const possiblePaths = [
+      path.join(artifactDir, 'Veracode Agent Based SCA Results', 'scaResults.json'),
+      path.join(artifactDir, 'scaResults.json'),
+    ];
+
+    let scaResultsPath = null;
+    for (const possiblePath of possiblePaths) {
+      if (fs.existsSync(possiblePath)) {
+        scaResultsPath = possiblePath;
+        core.info(`Found SCA results at: ${scaResultsPath}`);
+        break;
+      }
+    }
+
+    if (!scaResultsPath) {
+      throw new Error(`Could not find SCA results file in ${artifactDir}`);
+    }
 
     // Build command arguments
     const args = [
@@ -88653,21 +88681,8 @@ async function runFixSca(workspaceDir, actionPath, fixScaParams, sourceCodeDir) 
       'sca',
       sourceCodeDir,
       '--results',
-      path.join(
-        workspaceDir,
-        'veracode_artifact_directory',
-        'scaResults.json'
-      ),
-      '--async',
-      '--decouple',
-      'true',
+      scaResultsPath,
     ];
-
-    // Conditionally add --transitive flag (default: true)
-    const fixTransitive = core.getInput('fix-transitive');
-    if (fixTransitive?.toLowerCase() !== 'false') {
-      args.push('--transitive');
-    }
 
     // Conditionally add --remote flag (default: false)
     const fixRemote = core.getInput('fix-remote');
@@ -88683,12 +88698,83 @@ async function runFixSca(workspaceDir, actionPath, fixScaParams, sourceCodeDir) 
 
     // Run veracode fix sca command
     core.info(`Running: ${veracodeBinary} ${args.join(' ')}`);
-    await exec.exec(veracodeBinary, args, {
-      env: { ...process.env },
-      cwd: sourceCodeDir
-    });
 
-    // Check for changes in the repository
+    let cliOutput = '';
+    let cliExitCode = 0;
+
+    // Pass GitHub context via environment variables for fire-and-forget callback
+    const env = { ...process.env };
+    if (enableFnf) {
+      env.FNF_FEATURE_FLAG = 'true';
+      env.WORKFLOW_RUN_ID = process.env.GITHUB_RUN_ID;
+      if (scaScanRunId) {
+        env.SCA_SCAN_RUN_ID = scaScanRunId;
+      }
+    }
+
+    try {
+      cliExitCode = await exec.exec(veracodeBinary, args, {
+        env: env,
+        listeners: {
+          stdout: (data) => {
+            cliOutput += data.toString();
+          },
+          stderr: (data) => {
+            cliOutput += data.toString();
+          }
+        },
+        ignoreReturnCode: true,
+      });
+    } catch (error) {
+      core.error(`[CLI_ERROR] Failed to execute veracode CLI: ${error.message}`);
+      throw error;
+    }
+
+    // Check for CLI errors - if exit code is non-zero, submission likely failed
+    if (cliExitCode !== 0) {
+      // Extract error details from CLI output
+      const errorLines = cliOutput
+        .split('\n')
+        .filter((line) => line.includes('ERR') || line.includes('Error'))
+        .slice(-5)
+        .join('\n');
+
+      core.error(
+        `[CLI_SUBMISSION_FAILED] CLI exited with code ${cliExitCode}`
+      );
+      core.error(`[CLI_SUBMISSION_FAILED] Recent errors:\n${errorLines}`);
+
+      // Check for specific HTTP error codes in output
+      const has500Error = cliOutput.includes('500 Internal Server Error');
+      const has400Error = cliOutput.includes('400') || cliOutput.includes('Bad Request');
+      const has401Error = cliOutput.includes('401') || cliOutput.includes('Unauthorized');
+      const has403Error = cliOutput.includes('403') || cliOutput.includes('Forbidden');
+
+      if (has500Error) {
+        core.error(
+          '[BACKEND_ERROR] Backend service returned 500 Internal Server Error'
+        );
+      } else if (has400Error) {
+        core.error('[BACKEND_ERROR] Backend service returned 400 Bad Request');
+      } else if (has401Error) {
+        core.error('[BACKEND_ERROR] Backend service returned 401 Unauthorized');
+      } else if (has403Error) {
+        core.error('[BACKEND_ERROR] Backend service returned 403 Forbidden');
+      }
+
+      core.setOutput('run-next-step', 'false');
+      throw new Error(
+        `Fix SCA job submission failed with exit code ${cliExitCode}`
+      );
+    }
+
+    // Fire-and-forget mode: backend handles job polling, PR creation, etc.
+    if (enableFnf) {
+      core.setOutput('run-next-step', 'false');
+      return { hasChanges: false, fireAndForget: true };
+    }
+
+    // Polling mode: check for changes and return results (CLI ran with --async --decouple)
     let hasChanges = false;
     let gitDiffOutput = '';
 
@@ -145232,6 +145318,9 @@ async function main() {
     const githubApiUrl = core.getInput('github-api-url');
     const prNumber = core.getInput('pr-number');
     const fixScaParams = core.getInput('fix-sca-params');
+    const fnfFeatureFlag = core.getInput('fnf-feature-flag');
+    const scaScanRunId = core.getInput('sca-scan-run-id');
+
 
     const workspaceDir = process.env.GITHUB_WORKSPACE;
     const statusFilePath = path.join(workspaceDir, 'source-code', 'sca-fix-status');
@@ -145246,8 +145335,22 @@ async function main() {
 
     // Run Fix for SCA
     core.info('Running Fix for SCA...');
-    const fixScaOutput = await runFixSca(workspaceDir, actionPath, fixScaParams, sourceCodeDir);
-    
+    const enableFnf = fnfFeatureFlag === 'true';
+    let fixScaOutput;
+    try {
+      fixScaOutput = await runFixSca(workspaceDir, actionPath, fixScaParams, enableFnf, scaScanRunId);
+    } catch (fixScaError) {
+      core.error(`Fix for SCA failed: ${fixScaError.message}`);
+      core.setOutput('run-next-step', 'false');
+      throw fixScaError;
+    }
+
+    // Fire-and-forget mode: exit early, backend handles everything
+    if (enableFnf) {
+      return;
+    }
+
+    // Polling mode: check for changes and create PR if needed
     if (!fixScaOutput.hasChanges) {
       core.info('No changes detected. Skipping PR creation.');
       fs.writeFileSync(statusFilePath, 'NO_CHANGES_DETECTED', null, 2);

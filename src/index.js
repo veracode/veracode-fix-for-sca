@@ -15,6 +15,9 @@ async function main() {
     const githubApiUrl = core.getInput('github-api-url');
     const prNumber = core.getInput('pr-number');
     const fixScaParams = core.getInput('fix-sca-params');
+    const fnfFeatureFlag = core.getInput('fnf-feature-flag');
+    const scaScanRunId = core.getInput('sca-scan-run-id');
+
 
     const workspaceDir = process.env.GITHUB_WORKSPACE;
     const statusFilePath = path.join(workspaceDir, 'source-code', 'sca-fix-status');
@@ -29,8 +32,22 @@ async function main() {
 
     // Run Fix for SCA
     core.info('Running Fix for SCA...');
-    const fixScaOutput = await runFixSca(workspaceDir, actionPath, fixScaParams, sourceCodeDir);
-    
+    const enableFnf = fnfFeatureFlag === 'true';
+    let fixScaOutput;
+    try {
+      fixScaOutput = await runFixSca(workspaceDir, actionPath, fixScaParams, enableFnf, scaScanRunId);
+    } catch (fixScaError) {
+      core.error(`Fix for SCA failed: ${fixScaError.message}`);
+      core.setOutput('run-next-step', 'false');
+      throw fixScaError;
+    }
+
+    // Fire-and-forget mode: exit early, backend handles everything
+    if (enableFnf) {
+      return;
+    }
+
+    // Polling mode: check for changes and create PR if needed
     if (!fixScaOutput.hasChanges) {
       core.info('No changes detected. Skipping PR creation.');
       fs.writeFileSync(statusFilePath, 'NO_CHANGES_DETECTED', null, 2);
