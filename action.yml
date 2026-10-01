@@ -32,7 +32,7 @@ inputs:
   fnf-feature-flag:
     description: "Enable fire-and-forget async callback mode (default: false)"
     required: false
-    default: 'true'
+    default: 'false'
 
 # outputs:
 #   run-next-step:
