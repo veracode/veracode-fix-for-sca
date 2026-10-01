@@ -134,7 +134,6 @@ async function runFixSca(workspaceDir, actionPath, fixScaParams, enableFnf = fal
 
     // Fire-and-forget mode: backend handles job polling, PR creation, etc.
     if (enableFnf) {
-      core.info('[FIRE_AND_FORGET_MODE] Fix job submitted to backend for async processing');
       core.setOutput('run-next-step', 'false');
       return { hasChanges: false, fireAndForget: true };
     }

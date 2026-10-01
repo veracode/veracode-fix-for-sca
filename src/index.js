@@ -44,7 +44,6 @@ async function main() {
 
     // Fire-and-forget mode: exit early, backend handles everything
     if (enableFnf) {
-      core.info('Fire-and-forget mode: job submitted to backend');
       return;
     }
 
