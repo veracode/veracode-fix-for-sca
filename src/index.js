@@ -1,6 +1,7 @@
 const core = require('@actions/core');
 const fs = require('fs');
 const path = require('path');
+const github = require('@actions/github');
 const setupAstGrep = require('./setup-ast-grep');
 const runFixSca = require('./run-fix-sca');
 const createPr = require('./create-pr');
@@ -34,7 +35,8 @@ async function main() {
     // Upload fix workflow run ID artifact (used by veracode-github-app in all modes)
     // Contains: fix_workflow_run_id (from GITHUB_RUN_ID) + correlation_id for artifact matching
     try {
-      const correlationId = process.env.CORRELATION_ID || 'unknown';
+      // Get correlation_id from dispatch payload
+      const correlationId = github.context.payload.client_payload?.correlation_id || 'unknown';
       const artifactDir = path.join(workspaceDir, 'veracode_artifact_directory');
       fs.mkdirSync(artifactDir, { recursive: true });
 
