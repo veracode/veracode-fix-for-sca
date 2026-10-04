@@ -4,7 +4,7 @@ const os = require('os');
 const core = require('@actions/core');
 const exec = require('@actions/exec');
 
-async function runFixSca(workspaceDir, actionPath, fixScaParams, enableFnf = false, scaScanRunId = null) {
+async function runFixSca(workspaceDir, actionPath, fixScaParams, enableFnf = false, scaScanRunId = null, correlationId = null) {
   try {
     const projectRootDir = '';
     const sourceCodeDir = path.join(workspaceDir, 'source-code', projectRootDir);
@@ -70,7 +70,7 @@ async function runFixSca(workspaceDir, actionPath, fixScaParams, enableFnf = fal
     const env = { ...process.env };
     if (enableFnf) {
       env.FNF_FEATURE_FLAG = 'true';
-      env.WORKFLOW_RUN_ID = process.env.GITHUB_RUN_ID;
+      env.WORKFLOW_RUN_ID = correlationId;
       if (scaScanRunId) {
         env.SCA_SCAN_RUN_ID = scaScanRunId;
       }
