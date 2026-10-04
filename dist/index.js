@@ -145340,7 +145340,7 @@ async function main() {
 
     // Upload artifact: fix_workflow_run_id + correlation_id for veracode-github-app to match dispatch to workflow
     try {
-      // Get correlation_id from fix_context (nested to stay under GitHub's 10 property limit)
+      // Get correlation_id from fix_context (nested); workflow_run_id stays at top level for backward compatibility
       const correlationId = github.context.payload.client_payload?.fix_context?.correlation_id || 'unknown';
       const artifactDir = path.join(workspaceDir, 'veracode_artifact_directory');
       fs.mkdirSync(artifactDir, { recursive: true });
