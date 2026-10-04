@@ -132,6 +132,31 @@ async function runFixSca(workspaceDir, actionPath, fixScaParams, enableFnf = fal
       );
     }
 
+    // Upload workflow info artifact (used by veracode-github-app for FNF)
+    try {
+      const { DefaultArtifactClient } = require('@actions/artifact');
+      const artifactDir = path.join(workspaceDir, 'veracode_artifact_directory');
+      fs.mkdirSync(artifactDir, { recursive: true });
+
+      const workflowInfoPath = path.join(artifactDir, 'veracode-fnf-workflow-info.json');
+      fs.writeFileSync(workflowInfoPath, JSON.stringify({
+        fix_workflow_run_id: process.env.GITHUB_RUN_ID,
+        status: 'started'
+      }, null, 2));
+
+      const artifactClient = new DefaultArtifactClient();
+      await artifactClient.uploadArtifact(
+        'veracode-fnf-workflow-info',
+        [workflowInfoPath],
+        workspaceDir,
+        { continueOnError: false }
+      );
+      core.info('[FNF_ARTIFACT_UPLOADED] Uploaded workflow info artifact');
+    } catch (artifactError) {
+      core.warning(`[FNF_ARTIFACT_ERROR] Failed to upload workflow info artifact: ${artifactError.message}`);
+      // Don't fail the action if artifact upload fails
+    }
+
     // Fire-and-forget mode: backend handles job polling, PR creation, etc.
     if (enableFnf) {
       core.setOutput('run-next-step', 'false');
