@@ -5,6 +5,7 @@ const setupAstGrep = require('./setup-ast-grep');
 const runFixSca = require('./run-fix-sca');
 const createPr = require('./create-pr');
 const uploadPrComment = require('./upload-pr-comment');
+const { DefaultArtifactClient } = require('@actions/artifact');
 
 async function main() {
   try {
@@ -30,9 +31,37 @@ async function main() {
     core.info('Setting up ast-grep...');
     await setupAstGrep(actionPath);
 
+    // Upload fix workflow run ID artifact (contains correlation_id for matching)
+    const enableFnf = fnfFeatureFlag === 'true';
+    if (enableFnf) {
+      try {
+        const correlationId = process.env.CORRELATION_ID || 'unknown';
+        const artifactDir = path.join(workspaceDir, 'veracode_artifact_directory');
+        fs.mkdirSync(artifactDir, { recursive: true });
+
+        const workflowIdPath = path.join(artifactDir, 'fix-workflow-run-id.json');
+        fs.writeFileSync(workflowIdPath, JSON.stringify({
+          fix_workflow_run_id: process.env.GITHUB_RUN_ID,
+          correlation_id: correlationId,
+          status: 'started'
+        }, null, 2));
+
+        const artifactClient = new DefaultArtifactClient();
+        await artifactClient.uploadArtifact(
+          'fix-workflow-run-id',
+          [workflowIdPath],
+          workspaceDir,
+          { continueOnError: false }
+        );
+        core.info(`[FIX_WORKFLOW_ID_UPLOADED] Uploaded artifact with correlation=${correlationId}`);
+      } catch (artifactError) {
+        core.warning(`[FIX_WORKFLOW_ID_ERROR] Failed to upload fix workflow run ID artifact: ${artifactError.message}`);
+        // Don't fail the action if artifact upload fails
+      }
+    }
+
     // Run Fix for SCA
     core.info('Running Fix for SCA...');
-    const enableFnf = fnfFeatureFlag === 'true';
     let fixScaOutput;
     try {
       fixScaOutput = await runFixSca(workspaceDir, actionPath, fixScaParams, enableFnf, scaScanRunId);
