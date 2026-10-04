@@ -18,7 +18,7 @@ async function main() {
     const prNumber = core.getInput('pr-number');
     const fixScaParams = core.getInput('fix-sca-params');
     const fnfFeatureFlag = core.getInput('fnf-feature-flag');
-    const scaScanRunId = github.context.payload.client_payload?.fix_context?.workflow_run_id;
+    const scaScanRunId = github.context.payload.client_payload?.workflow_run_id;
 
 
     const workspaceDir = process.env.GITHUB_WORKSPACE;
@@ -37,8 +37,8 @@ async function main() {
 
     // Upload artifact: fix_workflow_run_id + correlation_id for veracode-github-app to match dispatch to workflow
     try {
-      // Get correlation_id from fix_context (nested); workflow_run_id stays at top level for backward compatibility
-      const correlationId = github.context.payload.client_payload?.fix_context?.correlation_id || 'unknown';
+      // Get correlation_id from dispatch payload
+      const correlationId = github.context.payload.client_payload?.correlation_id || 'unknown';
       const artifactDir = path.join(workspaceDir, 'veracode_artifact_directory');
       fs.mkdirSync(artifactDir, { recursive: true });
 
@@ -56,7 +56,7 @@ async function main() {
         workspaceDir,
         { continueOnError: false }
       );
-      core.info(`[FIX_WORKFLOW_ID_UPLOADED] Uploaded artifact with correlation=${correlationId}`);
+      core.info(`[FIX_WORKFLOW_ID_UPLOADED] Uploaded artifact with correlation=${correlationId}, runId=${process.env.GITHUB_RUN_ID}`);
     } catch (artifactError) {
       const errorMsg = `Failed to upload fix workflow run ID artifact: ${artifactError.message}`;
       if (enableFnf) {
