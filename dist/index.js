@@ -88640,7 +88640,7 @@ const os = __nccwpck_require__(70857);
 const core = __nccwpck_require__(37484);
 const exec = __nccwpck_require__(95236);
 
-async function runFixSca(workspaceDir, actionPath, fixScaParams, enableFnf = false, scaScanRunId = null) {
+async function runFixSca(workspaceDir, actionPath, fixScaParams, enableFnf = false, scaScanRunId = null, correlationId = null) {
   try {
     const projectRootDir = '';
     const sourceCodeDir = path.join(workspaceDir, 'source-code', projectRootDir);
@@ -88690,7 +88690,6 @@ async function runFixSca(workspaceDir, actionPath, fixScaParams, enableFnf = fal
       core.info(`remote argument appended`)
       args.push('--remote');
     }
-
     if (fixScaParams && fixScaParams.trim() && fixScaParams !== 'SCA-*') {
       core.info(`Fix SCA params: ${fixScaParams}`);
       args.push('-i', fixScaParams);
@@ -88706,7 +88705,7 @@ async function runFixSca(workspaceDir, actionPath, fixScaParams, enableFnf = fal
     const env = { ...process.env };
     if (enableFnf) {
       env.FNF_FEATURE_FLAG = 'true';
-      env.WORKFLOW_RUN_ID = process.env.GITHUB_RUN_ID;
+      env.WORKFLOW_RUN_ID = correlationId;
       if (scaScanRunId) {
         env.SCA_SCAN_RUN_ID = scaScanRunId;
       }
@@ -145309,7 +145308,6 @@ const setupAstGrep = __nccwpck_require__(21618);
 const runFixSca = __nccwpck_require__(35518);
 const createPr = __nccwpck_require__(98208);
 const uploadPrComment = __nccwpck_require__(70447);
-const { DefaultArtifactClient } = __nccwpck_require__(76846);
 
 async function main() {
   try {
@@ -145319,8 +145317,12 @@ async function main() {
     const branch = core.getInput('branch');
     const githubApiUrl = core.getInput('github-api-url');
     const prNumber = core.getInput('pr-number');
-    const fixScaParams = github.context.payload.client_payload?.fix_context?.fix_sca_params;
     const fnfFeatureFlag = core.getInput('fnf-feature-flag');
+
+    // Extract FNF context from payload for correlation and validation
+    const fixContext = github.context.payload.client_payload?.fix_context;
+    const correlationId = fixContext?.correlation_id || 'unknown';
+    const fixScaParams = fixContext?.fix_sca_params;
     const scaScanRunId = github.context.payload.client_payload?.workflow_run_id;
 
 
@@ -145338,42 +145340,11 @@ async function main() {
     core.info('Setting up ast-grep...');
     await setupAstGrep(actionPath);
 
-    // Upload artifact: fix_workflow_run_id + correlation_id for veracode-github-app to match dispatch to workflow
-    try {
-      // Get correlation_id from fix_context (nested to stay under 10 property limit)
-      const correlationId = github.context.payload.client_payload?.fix_context?.correlation_id || 'unknown';
-      const artifactDir = path.join(workspaceDir, 'veracode_artifact_directory');
-      fs.mkdirSync(artifactDir, { recursive: true });
-
-      const workflowIdPath = path.join(artifactDir, 'fix-workflow-run-id.json');
-      fs.writeFileSync(workflowIdPath, JSON.stringify({
-        fix_workflow_run_id: process.env.GITHUB_RUN_ID,
-        correlation_id: correlationId,
-        status: 'started'
-      }, null, 2));
-
-      const artifactClient = new DefaultArtifactClient();
-      await artifactClient.uploadArtifact(
-        'fix-workflow-run-id',
-        [workflowIdPath],
-        workspaceDir,
-        { continueOnError: false }
-      );
-      core.info(`[FIX_WORKFLOW_ID_UPLOADED] Uploaded artifact with correlation=${correlationId}, runId=${process.env.GITHUB_RUN_ID}`);
-    } catch (artifactError) {
-      const errorMsg = `Failed to upload fix workflow run ID artifact: ${artifactError.message}`;
-      if (enableFnf) {
-        core.setFailed(`[FIX_WORKFLOW_ID_ERROR] ${errorMsg} (required for fire-and-forget mode)`);
-        throw artifactError;
-      }
-      core.warning(`[FIX_WORKFLOW_ID_ERROR] ${errorMsg} (continuing in polling mode)`);
-    }
-
     // Run Fix for SCA
     core.info('Running Fix for SCA...');
     let fixScaOutput;
     try {
-      fixScaOutput = await runFixSca(workspaceDir, actionPath, fixScaParams, enableFnf, scaScanRunId);
+      fixScaOutput = await runFixSca(workspaceDir, actionPath, fixScaParams, enableFnf, scaScanRunId, correlationId);
     } catch (fixScaError) {
       core.error(`Fix for SCA failed: ${fixScaError.message}`);
       core.setOutput('run-next-step', 'false');
@@ -145388,7 +145359,7 @@ async function main() {
     // Polling mode: check for changes and create PR if needed
     if (!fixScaOutput.hasChanges) {
       core.info('No changes detected. Skipping PR creation.');
-      fs.writeFileSync(statusFilePath, 'NO_CHANGES_DETECTED', null, 2);
+      fs.writeFileSync(statusFilePath, 'NO_CHANGES_DETECTED');
       return;
     }
 
