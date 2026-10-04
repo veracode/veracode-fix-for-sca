@@ -138,9 +138,13 @@ async function runFixSca(workspaceDir, actionPath, fixScaParams, enableFnf = fal
       const artifactDir = path.join(workspaceDir, 'veracode_artifact_directory');
       fs.mkdirSync(artifactDir, { recursive: true });
 
+      // Get correlation_id from GitHub event context
+      const correlationId = process.env.CORRELATION_ID || core.getInput('correlation-id') || 'unknown';
+
       const workflowIdPath = path.join(artifactDir, 'fix-workflow-run-id.json');
       fs.writeFileSync(workflowIdPath, JSON.stringify({
         fix_workflow_run_id: process.env.GITHUB_RUN_ID,
+        correlation_id: correlationId,
         status: 'started'
       }, null, 2));
 
@@ -151,7 +155,7 @@ async function runFixSca(workspaceDir, actionPath, fixScaParams, enableFnf = fal
         workspaceDir,
         { continueOnError: false }
       );
-      core.info('[FIX_WORKFLOW_ID_UPLOADED] Uploaded fix workflow run ID artifact');
+      core.info(`[FIX_WORKFLOW_ID_UPLOADED] Uploaded artifact with correlation=${correlationId}`);
     } catch (artifactError) {
       core.warning(`[FIX_WORKFLOW_ID_ERROR] Failed to upload fix workflow run ID artifact: ${artifactError.message}`);
       // Don't fail the action if artifact upload fails
