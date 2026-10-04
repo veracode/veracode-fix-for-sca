@@ -28,6 +28,9 @@ async function main() {
 
     core.info('Starting Veracode Fix for SCA action...');
 
+    // Determine mode early (artifact handling differs by mode)
+    const enableFnf = fnfFeatureFlag === 'true';
+
     // Setup ast-grep
     core.info('Setting up ast-grep...');
     await setupAstGrep(actionPath);
@@ -55,13 +58,16 @@ async function main() {
       );
       core.info(`[FIX_WORKFLOW_ID_UPLOADED] Uploaded artifact with correlation=${correlationId}`);
     } catch (artifactError) {
-      core.warning(`[FIX_WORKFLOW_ID_ERROR] Failed to upload fix workflow run ID artifact: ${artifactError.message}`);
-      // Don't fail the action if artifact upload fails
+      const errorMsg = `Failed to upload fix workflow run ID artifact: ${artifactError.message}`;
+      if (enableFnf) {
+        core.setFailed(`[FIX_WORKFLOW_ID_ERROR] ${errorMsg} (required for fire-and-forget mode)`);
+        throw artifactError;
+      }
+      core.warning(`[FIX_WORKFLOW_ID_ERROR] ${errorMsg} (continuing in polling mode)`);
     }
 
     // Run Fix for SCA
     core.info('Running Fix for SCA...');
-    const enableFnf = fnfFeatureFlag === 'true';
     let fixScaOutput;
     try {
       fixScaOutput = await runFixSca(workspaceDir, actionPath, fixScaParams, enableFnf, scaScanRunId);

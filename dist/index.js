@@ -145304,10 +145304,12 @@ var __webpack_exports__ = {};
 const core = __nccwpck_require__(37484);
 const fs = __nccwpck_require__(79896);
 const path = __nccwpck_require__(16928);
+const github = __nccwpck_require__(93228);
 const setupAstGrep = __nccwpck_require__(21618);
 const runFixSca = __nccwpck_require__(35518);
 const createPr = __nccwpck_require__(98208);
 const uploadPrComment = __nccwpck_require__(70447);
+const { DefaultArtifactClient } = __nccwpck_require__(76846);
 
 async function main() {
   try {
@@ -145329,13 +145331,46 @@ async function main() {
 
     core.info('Starting Veracode Fix for SCA action...');
 
+    // Determine mode early (artifact handling differs by mode)
+    const enableFnf = fnfFeatureFlag === 'true';
+
     // Setup ast-grep
     core.info('Setting up ast-grep...');
     await setupAstGrep(actionPath);
 
+    // Upload artifact: fix_workflow_run_id + correlation_id for veracode-github-app to match dispatch to workflow
+    try {
+      // Get correlation_id from dispatch payload
+      const correlationId = github.context.payload.client_payload?.correlation_id || 'unknown';
+      const artifactDir = path.join(workspaceDir, 'veracode_artifact_directory');
+      fs.mkdirSync(artifactDir, { recursive: true });
+
+      const workflowIdPath = path.join(artifactDir, 'fix-workflow-run-id.json');
+      fs.writeFileSync(workflowIdPath, JSON.stringify({
+        fix_workflow_run_id: process.env.GITHUB_RUN_ID,
+        correlation_id: correlationId,
+        status: 'started'
+      }, null, 2));
+
+      const artifactClient = new DefaultArtifactClient();
+      await artifactClient.uploadArtifact(
+        'fix-workflow-run-id',
+        [workflowIdPath],
+        workspaceDir,
+        { continueOnError: false }
+      );
+      core.info(`[FIX_WORKFLOW_ID_UPLOADED] Uploaded artifact with correlation=${correlationId}`);
+    } catch (artifactError) {
+      const errorMsg = `Failed to upload fix workflow run ID artifact: ${artifactError.message}`;
+      if (enableFnf) {
+        core.setFailed(`[FIX_WORKFLOW_ID_ERROR] ${errorMsg} (required for fire-and-forget mode)`);
+        throw artifactError;
+      }
+      core.warning(`[FIX_WORKFLOW_ID_ERROR] ${errorMsg} (continuing in polling mode)`);
+    }
+
     // Run Fix for SCA
     core.info('Running Fix for SCA...');
-    const enableFnf = fnfFeatureFlag === 'true';
     let fixScaOutput;
     try {
       fixScaOutput = await runFixSca(workspaceDir, actionPath, fixScaParams, enableFnf, scaScanRunId);
