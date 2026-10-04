@@ -30,7 +30,7 @@ inputs:
     required: true
     default: 'true'
   fnf-feature-flag:
-    description: "Enable fire-and-forget async callback mode (default: false)"
+    description: "Enable fire-and-forget async callback mode (default: true)"
     required: false
     default: 'true'
 

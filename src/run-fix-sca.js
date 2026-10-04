@@ -54,7 +54,6 @@ async function runFixSca(workspaceDir, actionPath, fixScaParams, enableFnf = fal
       core.info(`remote argument appended`)
       args.push('--remote');
     }
-
     if (fixScaParams && fixScaParams.trim() && fixScaParams !== 'SCA-*') {
       core.info(`Fix SCA params: ${fixScaParams}`);
       args.push('-i', fixScaParams);

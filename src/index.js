@@ -1,4 +1,5 @@
 const core = require('@actions/core');
+const fs = require('fs');
 const path = require('path');
 const github = require('@actions/github');
 const setupAstGrep = require('./setup-ast-grep');
@@ -16,7 +17,7 @@ async function main() {
     const prNumber = core.getInput('pr-number');
     const fnfFeatureFlag = core.getInput('fnf-feature-flag');
 
-    // Extract from fix_context (correlation_id for callback, sca_scan_run_id for workflow lookup)
+    // Extract FNF context from payload for correlation and validation
     const fixContext = github.context.payload.client_payload?.fix_context;
     const correlationId = fixContext?.correlation_id || 'unknown';
     const fixScaParams = fixContext?.fix_sca_params;
@@ -56,7 +57,7 @@ async function main() {
     // Polling mode: check for changes and create PR if needed
     if (!fixScaOutput.hasChanges) {
       core.info('No changes detected. Skipping PR creation.');
-      fs.writeFileSync(statusFilePath, 'NO_CHANGES_DETECTED', null, 2);
+      fs.writeFileSync(statusFilePath, 'NO_CHANGES_DETECTED');
       return;
     }
 
