@@ -32,8 +32,7 @@ async function main() {
     core.info('Setting up ast-grep...');
     await setupAstGrep(actionPath);
 
-    // Upload fix workflow run ID artifact (used by veracode-github-app in all modes)
-    // Contains: fix_workflow_run_id (from GITHUB_RUN_ID) + correlation_id for artifact matching
+    // Upload artifact: fix_workflow_run_id + correlation_id for veracode-github-app to match dispatch to workflow
     try {
       // Get correlation_id from dispatch payload
       const correlationId = github.context.payload.client_payload?.correlation_id || 'unknown';
