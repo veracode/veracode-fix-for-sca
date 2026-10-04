@@ -145321,7 +145321,7 @@ async function main() {
     const prNumber = core.getInput('pr-number');
     const fixScaParams = core.getInput('fix-sca-params');
     const fnfFeatureFlag = core.getInput('fnf-feature-flag');
-    const scaScanRunId = core.getInput('sca-scan-run-id');
+    const scaScanRunId = github.context.payload.client_payload?.fix_context?.workflow_run_id;
 
 
     const workspaceDir = process.env.GITHUB_WORKSPACE;
