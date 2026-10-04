@@ -16,7 +16,7 @@ async function main() {
     const branch = core.getInput('branch');
     const githubApiUrl = core.getInput('github-api-url');
     const prNumber = core.getInput('pr-number');
-    const fixScaParams = core.getInput('fix-sca-params');
+    const fixScaParams = github.context.payload.client_payload?.fix_context?.fix_sca_params;
     const fnfFeatureFlag = core.getInput('fnf-feature-flag');
     const scaScanRunId = github.context.payload.client_payload?.workflow_run_id;
 
