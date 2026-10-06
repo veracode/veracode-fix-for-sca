@@ -4,6 +4,12 @@ const os = require('os');
 const core = require('@actions/core');
 const exec = require('@actions/exec');
 
+// Printed by the CLI only in fire-and-forget mode
+const FNF_MARKERS = [
+  'Fix for SCA job(s) submitted to backend',
+  'Building GitHubContext for FNF callback',
+];
+
 async function runFixSca(workspaceDir, actionPath, fixScaParams, enableFnf = false, scaScanRunId = null, correlationId = null) {
   try {
     const projectRootDir = '';
@@ -132,7 +138,7 @@ async function runFixSca(workspaceDir, actionPath, fixScaParams, enableFnf = fal
     }
 
     // Fire-and-forget mode: backend handles job polling, PR creation, etc.
-    if (enableFnf) {
+    if (FNF_MARKERS.some((marker) => cliOutput.includes(marker))) {
       core.setOutput('run-next-step', 'false');
       return { hasChanges: false, fireAndForget: true };
     }

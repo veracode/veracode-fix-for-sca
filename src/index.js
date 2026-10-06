@@ -16,13 +16,11 @@ async function main() {
     const githubApiUrl = core.getInput('github-api-url');
     const prNumber = core.getInput('pr-number');
     const fnfFeatureFlag = core.getInput('fnf-feature-flag');
+    const fixScaParams = core.getInput('fix-sca-params');
 
-    // Extract FNF context from payload for correlation and validation
-    const fixContext = github.context.payload.client_payload?.fix_context;
-    const correlationId = fixContext?.correlation_id || 'unknown';
-    const fixScaParams = fixContext?.fix_sca_params;
+    // Nested: client_payload allows only 10 top-level properties
+    const correlationId = github.context.payload.client_payload?.user_config?.correlation_id;
     const scaScanRunId = github.context.payload.client_payload?.workflow_run_id;
-
 
     const workspaceDir = process.env.GITHUB_WORKSPACE;
     const statusFilePath = path.join(workspaceDir, 'source-code', 'sca-fix-status');
@@ -31,8 +29,8 @@ async function main() {
 
     core.info('Starting Veracode Fix for SCA action...');
 
-    // Determine mode early (artifact handling differs by mode)
-    const enableFnf = fnfFeatureFlag === 'true';
+    // FNF needs a correlation_id for the callback; without one the run stays in polling mode
+    const enableFnf = fnfFeatureFlag === 'true' && !!correlationId;
 
     // Setup ast-grep
     core.info('Setting up ast-grep...');
@@ -50,7 +48,7 @@ async function main() {
     }
 
     // Fire-and-forget mode: exit early, backend handles everything
-    if (enableFnf) {
+    if (fixScaOutput.fireAndForget) {
       return;
     }
 
