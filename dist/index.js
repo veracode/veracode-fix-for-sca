@@ -88646,7 +88646,7 @@ const FNF_MARKERS = [
   'Building GitHubContext for FNF callback',
 ];
 
-async function runFixSca(workspaceDir, actionPath, fixScaParams, enableFnf = false, scaScanRunId = null, correlationId = null) {
+async function runFixSca(workspaceDir, actionPath, fixScaParams, enableFnf = false, correlationId = null) {
   try {
     const projectRootDir = '';
     const sourceCodeDir = path.join(workspaceDir, 'source-code', projectRootDir);
@@ -88711,10 +88711,7 @@ async function runFixSca(workspaceDir, actionPath, fixScaParams, enableFnf = fal
     const env = { ...process.env };
     if (enableFnf) {
       env.FNF_FEATURE_FLAG = 'true';
-      env.WORKFLOW_RUN_ID = correlationId;
-      if (scaScanRunId) {
-        env.SCA_SCAN_RUN_ID = scaScanRunId;
-      }
+      env.CORRELATION_ID = correlationId;
     }
 
     try {
@@ -145328,7 +145325,6 @@ async function main() {
 
     // Nested: client_payload allows only 10 top-level properties
     const correlationId = github.context.payload.client_payload?.user_config?.correlation_id;
-    const scaScanRunId = github.context.payload.client_payload?.workflow_run_id;
 
     const workspaceDir = process.env.GITHUB_WORKSPACE;
     const statusFilePath = path.join(workspaceDir, 'source-code', 'sca-fix-status');
@@ -145348,7 +145344,7 @@ async function main() {
     core.info('Running Fix for SCA...');
     let fixScaOutput;
     try {
-      fixScaOutput = await runFixSca(workspaceDir, actionPath, fixScaParams, enableFnf, scaScanRunId, correlationId);
+      fixScaOutput = await runFixSca(workspaceDir, actionPath, fixScaParams, enableFnf, correlationId);
     } catch (fixScaError) {
       core.error(`Fix for SCA failed: ${fixScaError.message}`);
       core.setOutput('run-next-step', 'false');

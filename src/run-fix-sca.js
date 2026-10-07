@@ -10,7 +10,7 @@ const FNF_MARKERS = [
   'Building GitHubContext for FNF callback',
 ];
 
-async function runFixSca(workspaceDir, actionPath, fixScaParams, enableFnf = false, scaScanRunId = null, correlationId = null) {
+async function runFixSca(workspaceDir, actionPath, fixScaParams, enableFnf = false, correlationId = null) {
   try {
     const projectRootDir = '';
     const sourceCodeDir = path.join(workspaceDir, 'source-code', projectRootDir);
@@ -75,10 +75,7 @@ async function runFixSca(workspaceDir, actionPath, fixScaParams, enableFnf = fal
     const env = { ...process.env };
     if (enableFnf) {
       env.FNF_FEATURE_FLAG = 'true';
-      env.WORKFLOW_RUN_ID = correlationId;
-      if (scaScanRunId) {
-        env.SCA_SCAN_RUN_ID = scaScanRunId;
-      }
+      env.CORRELATION_ID = correlationId;
     }
 
     try {
