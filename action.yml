@@ -28,7 +28,7 @@ inputs:
   fix-remote:
     description: "Fix remote flag (default: true)"
     required: true
-    default: 'false'
+    default: 'true'
   fnf-feature-flag:
     description: "Enable fire-and-forget async callback mode (default: true)"
     required: false
